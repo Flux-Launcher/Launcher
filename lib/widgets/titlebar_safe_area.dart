@@ -17,7 +17,6 @@ class _MacOSTitlebarSafeArea extends StatefulWidget {
 class _MacOSTitlebarSafeAreaState extends State<_MacOSTitlebarSafeArea> {
   double _titlebarHeight = 0.0;
 
-  /// Updates the height of the titlebar, if necessary.
   Future<void> _updateTitlebarHeight() async {
     final newTitlebarHeight = await Window.getTitlebarHeight();
     if (_titlebarHeight != newTitlebarHeight) {
@@ -41,18 +40,6 @@ class _MacOSTitlebarSafeAreaState extends State<_MacOSTitlebarSafeArea> {
 class TitlebarSafeArea extends StatelessWidget {
   final Widget child;
 
-  /// A widget that provides a safe area for its child.
-  ///
-  /// The safe area is the area on the top of the window that is not covered by
-  /// the title bar. This widget has no effect when the full-size content view
-  /// is disabled or when the app is running on a platform other than macOS.
-  ///
-  /// Example:
-  /// ```dart
-  /// TitlebarSafeArea(
-  ///  child: Text('Hello World'),
-  /// )
-  /// ```
   const TitlebarSafeArea({Key? key, required this.child}) : super(key: key);
 
   @override

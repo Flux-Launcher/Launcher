@@ -11,14 +11,14 @@ import 'package:flux_launcher_gui/views/main_page.dart';
 export 'package:flux_launcher_gui/utils/launcher/launch_policy.dart' show LaunchConfig, LaunchPolicy, ModLoader, LaunchProfile;
 
 class LaunchUtils {
-  /// Lancia Minecraft con i parametri di LaunchConfig
+
   static Future<void> launchMinecraft(
     BuildContext context,
     LaunchConfig config, {
     required VoidCallback onAccountRequired,
     String? gameDirectory,
   }) async {
-    // Verifica account
+
     final account = Globals.getAccount();
     if (account == null) {
       WidgetUtils.showMessageDialog(
@@ -39,7 +39,7 @@ class LaunchUtils {
     await AccountUtils.refreshPremium(context);
 
     try {
-      // Installa Java automaticamente se necessario
+
       if (!Globals.javaAdvSet) {
         await LauncherUtils.JavaAutoInstall(
           config.isModded ? config.realGameVersion : config.gameVersion,
@@ -48,7 +48,6 @@ class LaunchUtils {
 
       if (context.mounted) Navigator.pop(context);
 
-      // Costruisci args di lancio
       final args = buildLaunchArguments(config, gameDirectory: gameDirectory);
 
       final Process process;
@@ -58,8 +57,7 @@ class LaunchUtils {
         final lastSlashIndex = javaPath.lastIndexOf('/');
 
         if (lastSlashIndex > 0) {
-          // Su linux è meglio usare una shell per evitare vari casini.
-          // Si usa `exec` così java rimpiazza la shell: process.kill() colpisce java e non solo sh
+
           final javaDir = javaPath.substring(0, lastSlashIndex);
           final javaArgs = args.map(_escapeShellArg).join(' ');
           process = await Process.start('sh', ['-c', "cd '${javaDir.replaceAll("'", "'\\''")}' && exec ./java $javaArgs"]);
@@ -71,7 +69,7 @@ class LaunchUtils {
           );
         }
       } else {
-        // Su Windows e MacOS usiamo il lancio normale
+
         process = await Process.start(
           Globals.javapathcontroller.text,
           args,
@@ -79,11 +77,10 @@ class LaunchUtils {
         );
       }
 
-      // Gestione console
       if (Globals.showConsole && context.mounted) {
         WidgetUtils.showConsole(context, process, gameDirectory: gameDirectory);
       } else {
-        // Consuma comunque stdout/stderr
+
         process.stdout.transform(systemEncoding.decoder).listen((data) {
           final cleaned = data.replaceAll(RegExp(r'[\r\n]+'), '');
           print('[STDOUT] $cleaned');
@@ -95,7 +92,6 @@ class LaunchUtils {
         });
       }
 
-      // Handle exit code senza bloccare UI
       _handleProcessExit(context, process);
     } catch (e) {
       if (context.mounted) {
@@ -111,16 +107,15 @@ class LaunchUtils {
   }
 
   static String _escapeShellArg(String arg) {
-    // Se l'argomento contiene spazi o caratteri speciali, wrappa con quote singole
+
     if (arg.contains(' ') || arg.contains('\$') || arg.contains('!') || arg.contains('"') || arg.contains('\'') || arg.contains('\\')) {
-      // Escape delle singole quote interne
+
       return "'${arg.replaceAll("'", "'\\''")}'";
     }
 
     return arg;
   }
 
-  /// Gestione exit del processo in background
   static Future<void> _handleProcessExit(BuildContext context, Process process) async {
     final exitCode = await process.exitCode;
     Globals.consolecontroller.append("[LAUNCHER]: exit code $exitCode\n");
@@ -130,16 +125,12 @@ class LaunchUtils {
     }
   }
 
-  /// Costruisce args completi
   static List<String> buildLaunchArguments(LaunchConfig config, {String? gameDirectory}) {
     final account = Globals.getAccount()!;
     final args = <String>[];
 
-    /* ---------- JVM ARGS (PRIMA DI -jar) ---------- */
-
     args.addAll(config.jvmArgs);
 
-    // Workaround offline 1.16.4 / 1.16.5
     if ((config.realGameVersion == "1.16.4" || config.realGameVersion == "1.16.5") && !account.isPremium) {
       args.addAll([
         "-Dminecraft.api.auth.host=https://0.0.0.0/",
@@ -149,15 +140,12 @@ class LaunchUtils {
       ]);
     }
 
-    // macOS: XstartOnFirstThread
     if (config.startOnFirstThread) args.add("-XstartOnFirstThread");
 
-    // JVM args utente
     if (Globals.javavmcontroller.text.isNotEmpty) {
       args.addAll(Globals.javavmcontroller.text.split(" "));
     }
 
-    // JVM base
     final workingDir = gameDirectory ?? Globals.gamefoldercontroller.text;
     args.addAll([
       "-Duser.dir=$workingDir",
@@ -165,15 +153,11 @@ class LaunchUtils {
       ...LauncherUtils.buildJVMOptimizedArgs(Globals.javaramcontroller.text),
     ]);
 
-    /* ---------- JAR ---------- */
-
     args.addAll([
       "-cp",
       "${LauncherUtils.getApplicationFolder("flux")}/Launcher.jar",
       Globals.javaLauncherMainClass,
     ]);
-
-    /* ---------- LAUNCHER ARGS (DOPO -jar) ---------- */
 
     args.addAll([
       "-version",
@@ -193,21 +177,15 @@ class LaunchUtils {
       args.addAll(["-gameFolder", gameDirectory ?? Globals.gamefoldercontroller.text]);
     }
 
-    // Launcher args utente. "-c" è già stato interpretato come override
-    // manuale della classpath (vedi LaunchPolicy.hasManualClasspathOverride)
-    // e riflesso in config.enableClassPath sopra: va filtrato qui per non
-    // duplicarlo.
     if (Globals.javalaunchercontroller.text.isNotEmpty) {
       args.addAll(Globals.javalaunchercontroller.text.split(" ").where((arg) => arg != "-c"));
     }
 
-    // Launcher args del loader
     args.addAll(config.launcherArgs);
 
     return args;
   }
 
-  /// Mostra crash dialog
   static void _showCrashDialog(BuildContext context) {
     WidgetUtils.showPopup(
       context,
@@ -250,7 +228,6 @@ class LaunchUtils {
     );
   }
 
-  /// Determina se serve startOnFirstThread per macOS
   static bool shouldUseStartOnFirstThread(String resolvedGameVersion) {
     if (!Platform.isMacOS) return false;
 

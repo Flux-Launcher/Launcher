@@ -1,7 +1,3 @@
-// Copyright 2013 The Flutter Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart' show CupertinoTheme;
@@ -11,11 +7,8 @@ import 'package:flutter/widgets.dart';
 import 'style_sheet.dart';
 import 'widget.dart';
 
-/// Type for a function that creates image widgets.
 typedef ImageBuilder = Widget Function(Uri uri, String? imageDirectory, double? width, double? height);
 
-/// A default image builder handling http/https, resource, and file URLs.
-// ignore: prefer_function_declarations_over_variables
 final ImageBuilder kDefaultImageBuilder = (
   Uri uri,
   String? imageDirectory,
@@ -56,7 +49,7 @@ final ImageBuilder kDefaultImageBuilder = (
           errorBuilder: kDefaultImageErrorWidgetBuilder,
         );
       } catch (error, stackTrace) {
-        // Handle any invalid file URI's.
+
         return Builder(
           builder: (BuildContext context) {
             return kDefaultImageErrorWidgetBuilder(context, error, stackTrace);
@@ -67,8 +60,6 @@ final ImageBuilder kDefaultImageBuilder = (
   }
 };
 
-/// A default error widget builder for handling image errors.
-// ignore: prefer_function_declarations_over_variables
 final ImageErrorWidgetBuilder kDefaultImageErrorWidgetBuilder = (
   BuildContext context,
   Object error,
@@ -77,9 +68,8 @@ final ImageErrorWidgetBuilder kDefaultImageErrorWidgetBuilder = (
   return const SizedBox();
 };
 
-/// A default style sheet generator.
 final MarkdownStyleSheet Function(BuildContext, MarkdownStyleSheetBaseTheme?)
-// ignore: prefer_function_declarations_over_variables
+
     kFallbackStyle = (
   BuildContext context,
   MarkdownStyleSheetBaseTheme? baseTheme,
@@ -91,7 +81,7 @@ final MarkdownStyleSheet Function(BuildContext, MarkdownStyleSheetBaseTheme?)
     case MarkdownStyleSheetBaseTheme.cupertino:
       result = MarkdownStyleSheet.fromCupertinoTheme(CupertinoTheme.of(context));
     case MarkdownStyleSheetBaseTheme.material:
-    // ignore: no_default_cases
+
     default:
       result = MarkdownStyleSheet.fromTheme(Theme.of(context));
   }

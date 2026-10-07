@@ -74,10 +74,7 @@ class _NewsScreenState extends State<NewsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // A differenza della vecchia versione (larga solo 1/5 della finestra,
-    // rendendo l'articolo illeggibile), questa pagina usa tutta la larghezza
-    // disponibile e centra il contenuto testuale in una colonna di
-    // larghezza confortevole per la lettura (vedi _buildBody).
+
     return Material(
       color: ColorUtils.dynamicWindowBackgroundColor,
       child: Column(
@@ -113,10 +110,7 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Widget _buildHero(BuildContext context) {
-    // Banner edge-to-edge (niente margini né bordi arrotondati): il
-    // pulsante indietro non vive più in una barra a parte sopra l'immagine,
-    // ma galleggia direttamente su di essa, sempre visibile grazie allo
-    // sfondo circolare semi-trasparente.
+
     return AspectRatio(
       aspectRatio: 16 / 6,
       child: Stack(
@@ -126,8 +120,7 @@ class _NewsScreenState extends State<NewsScreen> {
             "${Urls.mojangContentURL}${widget.url}",
             fit: BoxFit.cover,
           ),
-          // Gradiente in basso, non un blur/scurimento uniforme: la
-          // miniatura resta ben visibile e il titolo comunque leggibile.
+
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -185,10 +178,6 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  /// Colonna di contenuto centrata a larghezza fissa: su una finestra larga,
-  /// del testo che si estende da un bordo all'altro dello schermo è
-  /// scomodo da leggere (righe troppo lunghe). 720px tiene la lunghezza
-  /// delle righe in una zona confortevole, come in un articolo di blog.
   Widget _buildBody(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),

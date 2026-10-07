@@ -35,7 +35,7 @@ static void flutter_acrylic_plugin_handle_method_call(
   g_autoptr(FlMethodResponse) response = nullptr;
   const gchar* method = fl_method_call_get_name(method_call);
   if (strcmp(method, "Initialize") == 0) {
-    /* Not required for Linux. */
+
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else if (strcmp(method, "SetEffect") == 0) {
     FlView* view = fl_plugin_registrar_get_view(g_registrar);

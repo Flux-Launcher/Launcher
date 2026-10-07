@@ -8,68 +8,67 @@ class WindowEffectToMaterialConverter {
     WindowEffect windowEffect,
   ) {
     switch (windowEffect.index) {
-      case 0: // disabled
+      case 0:
         return NSVisualEffectViewMaterial.windowBackground;
 
-      case 1: // solid
+      case 1:
         return NSVisualEffectViewMaterial.windowBackground;
 
-      case 2: // transparent
+      case 2:
         return NSVisualEffectViewMaterial.underWindowBackground;
 
-      case 3: // aero
+      case 3:
         return NSVisualEffectViewMaterial.hudWindow;
 
-      case 4: // acrylic
+      case 4:
         return NSVisualEffectViewMaterial.fullScreenUI;
 
-      case 5: // mica
+      case 5:
         return NSVisualEffectViewMaterial.headerView;
 
-      case 6: // tabbed
+      case 6:
         return NSVisualEffectViewMaterial.headerView;
 
-      /* The following effects are macOS-only: */
-      case 7: // titlebar
+      case 7:
         return NSVisualEffectViewMaterial.titlebar;
 
-      case 8: // selection
+      case 8:
         return NSVisualEffectViewMaterial.selection;
 
-      case 9: // menu
+      case 9:
         return NSVisualEffectViewMaterial.menu;
 
-      case 10: // popover
+      case 10:
         return NSVisualEffectViewMaterial.popover;
 
-      case 11: // sidebar
+      case 11:
         return NSVisualEffectViewMaterial.sidebar;
 
-      case 12: // headerView
+      case 12:
         return NSVisualEffectViewMaterial.headerView;
 
-      case 13: // sheet
+      case 13:
         return NSVisualEffectViewMaterial.sheet;
 
-      case 14: // windowBackground
+      case 14:
         return NSVisualEffectViewMaterial.windowBackground;
 
-      case 15: // hudWindow
+      case 15:
         return NSVisualEffectViewMaterial.hudWindow;
 
-      case 16: // fullScreenUI
+      case 16:
         return NSVisualEffectViewMaterial.fullScreenUI;
 
-      case 17: // toolTip
+      case 17:
         return NSVisualEffectViewMaterial.toolTip;
 
-      case 18: // contentBackground
+      case 18:
         return NSVisualEffectViewMaterial.contentBackground;
 
-      case 19: // underWindowBackground
+      case 19:
         return NSVisualEffectViewMaterial.underWindowBackground;
 
-      case 20: // underPageBackground
+      case 20:
         return NSVisualEffectViewMaterial.underPageBackground;
 
       default:

@@ -5,37 +5,24 @@ import 'package:flutter_acrylic/macos/converters/window_effect_to_material_conve
 import 'package:macos_window_utils/macos_window_utils.dart'
     as macos_window_utils;
 
-/// Visual effect subview properties (macOS only).
-///
-/// All values may be set to null if they should not be overwritten.
 class VisualEffectSubviewProperties {
-  /// The width of the subview's frame.
+
   final double? frameWidth;
 
-  /// The height of the subview's frame.
   final double? frameHeight;
 
-  /// The x position of the subview's frame.
   final double? frameX;
 
-  /// The y position of the subview's frame, starting at the bottom of the
-  /// window.
   final double? frameY;
 
-  /// The alpha value of the subview.
   final double? alphaValue;
 
-  /// The corner Radius of the subview.
   final double? cornerRadius;
 
-  /// A bitmask indicating which corners should follow the `cornerRadius`
-  /// property.
   final int? cornerMask;
 
-  /// The effect/material of the subview.
   final WindowEffect? effect;
 
-  /// The state of the subview.
   final MacOSBlurViewState? state;
 
   VisualEffectSubviewProperties({

@@ -31,29 +31,25 @@ Future<dynamic> doMicrosoftRefresh(dynamic context, String refresh_token, {int m
   for (int attempt = 1; attempt <= maxRetries; attempt++) {
     final data = await getToken(context, 'refresh_token', refresh_token, null);
 
-    // Se getToken ha restituito una stringa è un errore, usciamo subito
     if (data == null || data is String) return data;
 
     final xboxResult = await doXboxLiveAuth(context, data['access_token']);
 
-    // Se il risultato non è una Map con access_token, è un errore
     if (xboxResult is! Map || !xboxResult.containsKey('access_token')) {
       return xboxResult;
     }
 
     final mcToken = xboxResult['access_token'] as String;
 
-    // Verifichiamo che il token MC funzioni davvero
     final profile = await fetchMinecraftProfile(context, mcToken);
 
     if (profile is Map && profile.containsKey('id')) {
-      // Token valido, restituiamo i dati completi
+
       return xboxResult;
     }
 
-    // Token non valido: se abbiamo altri tentativi, riproviamo
     if (attempt < maxRetries) {
-      await Future.delayed(Duration(seconds: 2 * attempt)); // backoff
+      await Future.delayed(Duration(seconds: 2 * attempt));
       continue;
     }
   }
@@ -191,10 +187,8 @@ Future<String> uploadSkin(dynamic context, String variant, Account account, Stri
 
   request.headers['Authorization'] = 'Bearer ${account.accessToken}';
 
-  // Add variant parameter to the request
   request.fields['variant'] = variant;
 
-  // Create a file stream and add it to the request as a MultipartFile
   final file = File(filePath);
   if (!file.existsSync()) {
     throw Exception("${AppLocalizations.of(context)!.account_skin_file_fail} $filePath");
@@ -204,10 +198,8 @@ Future<String> uploadSkin(dynamic context, String variant, Account account, Stri
   final length = await file.length();
   final multipartFile = http.MultipartFile('file', stream, length, filename: filePath.split("/").last, contentType: MediaType('image', 'png'));
 
-  // Add the file to the request
   request.files.add(multipartFile);
 
-  // Send the request and get the response
   final response = await request.send();
 
   if (response.statusCode == 200) {

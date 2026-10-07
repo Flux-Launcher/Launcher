@@ -318,7 +318,7 @@ class _ModrinthViewState extends State<ModrinthView> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Replace the Expanded Column in _buildModpackItem with this:
+
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,9 +339,9 @@ class _ModrinthViewState extends State<ModrinthView> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2), // was 4
+                      const SizedBox(height: 2),
                       Flexible(
-                        // <-- wrap description in Flexible
+
                         child: Text(
                           modpack["description"] ?? "",
                           style: WidgetUtils.customTextStyle(13, FontWeight.w300, ColorUtils.secondaryFontColor),
@@ -349,7 +349,7 @@ class _ModrinthViewState extends State<ModrinthView> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: 4), // was 10
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [

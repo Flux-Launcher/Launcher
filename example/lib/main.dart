@@ -18,18 +18,18 @@ Future<void> main() async {
   if (Platform.isWindows) {
     int? buildNumber = getBuildNumber(Platform.operatingSystemVersion);
 
-    Globals.WindowThemes.add('Clear'); // for any version
+    Globals.WindowThemes.add('Clear');
     if (buildNumber! >= 7601) {
-      if (buildNumber < 22000) Globals.WindowThemes.add('Aero'); // No aero for windows 11 (broke)
-      if (buildNumber >= 22523) Globals.WindowThemes.add('Mica'); // Mica only for windows 11
-      if (buildNumber >= 17134) Globals.WindowThemes.add('Acrylic'); // Acrylic for windows 10+
+      if (buildNumber < 22000) Globals.WindowThemes.add('Aero');
+      if (buildNumber >= 22523) Globals.WindowThemes.add('Mica');
+      if (buildNumber >= 17134) Globals.WindowThemes.add('Acrylic');
     }
     Globals.WindowThemes.add('Material');
   } else if (Platform.isLinux) {
-    Globals.WindowThemes.add('Clear'); // Can look like acrylic by playing with Desktop Environment
+    Globals.WindowThemes.add('Clear');
     Globals.WindowThemes.add('Material');
   } else if (Platform.isMacOS) {
-    Globals.WindowThemes.add('Acrylic'); // Acrylic for macos
+    Globals.WindowThemes.add('Acrylic');
   }
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,7 +92,6 @@ class MyAppBodyState extends State<MyAppBody> {
   Future<void> setWindowEffect() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // legge i setting se esistono, in alternativa usa valori predefiniti
     Globals.showOnlyReleases = prefs.getBool('showOnlyReleases') ?? true;
     Globals.darkModeTheme = prefs.getBool('darkModeTheme') ?? false;
     Globals.accentColor = prefs.getInt('accentColor') ?? 0;
@@ -111,7 +110,6 @@ class MyAppBodyState extends State<MyAppBody> {
     ColorUtils.isMaterial = (Globals.selectedWindowTheme.contains('Material'));
     ColorUtils.reloadColors();
 
-    // scrive i setting con i valori predefiniti se non esistono
     if (!prefs.containsKey('showOnlyReleases')) prefs.setBool('showOnlyReleases', Globals.showOnlyReleases);
     if (!prefs.containsKey('darkModeTheme')) prefs.setBool('darkModeTheme', Globals.darkModeTheme);
     if (!prefs.containsKey('accentColor')) prefs.setInt('accentColor', Globals.accentColor);
@@ -273,8 +271,8 @@ String getDefaultTheme() {
     int? buildNumber = getBuildNumber(Platform.operatingSystemVersion);
 
     if (buildNumber != null) {
-      if (buildNumber >= 22000) return "Acrylic"; // Acrylic default for windows 11
-      if (buildNumber >= 7601) return "Aero"; // Aero default for windows 7, 8, 8.1, 10
+      if (buildNumber >= 22000) return "Acrylic";
+      if (buildNumber >= 7601) return "Aero";
     }
   } else if (Platform.isMacOS) {
     return "Acrylic";

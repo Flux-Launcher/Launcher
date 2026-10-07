@@ -29,11 +29,9 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
   List<dynamic> _dependencies = [];
   Map<String, dynamic> _modDetails = {};
 
-  // ── Real total download size (.mrpack + every mod it lists) ───
   bool _isLoadingSize = false;
   int? _realTotalSize;
 
-  // ── Install state ──────────────────────────────
   bool _isInstalled = false;
   bool _isInstalling = false;
   double _installProgress = 0.0;
@@ -77,12 +75,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     if (_latestVersion != null) _computeRealSize();
   }
 
-  /// The Modrinth API only reports the size of the primary file, which for
-  /// a modpack is the .mrpack itself: a small manifest (modrinth.index.json)
-  /// plus overrides, NOT the mod jars it references. Those are downloaded
-  /// separately at install time, so the "size" shown by the API is wildly
-  /// smaller than the actual download. Fetch the (small) .mrpack, sum the
-  /// fileSize of every listed mod, and use that as the real total instead.
   Future<void> _computeRealSize() async {
     final files = (_latestVersion["files"] as List? ?? []);
     if (files.isEmpty) return;
@@ -109,7 +101,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
       final modFiles = (index['files'] as List? ?? []);
       final modsTotal = modFiles.fold<int>(0, (sum, f) => sum + ((f as Map)['fileSize'] as int? ?? 0));
 
-      // The .mrpack itself (overrides + manifest) is also downloaded.
       final total = modsTotal + res.bodyBytes.length;
 
       if (mounted) setState(() => _realTotalSize = total);
@@ -143,8 +134,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
       if (mounted) setState(() => _isLoadingMods = false);
     }
   }
-
-  // ── Install / uninstall ────────────────────────
 
   Future<void> _install() async {
     final projectId = widget.modpack["project_id"]?.toString() ?? '';
@@ -281,7 +270,7 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
       isModded: isModded,
       realGameVersion: minecraftVersion,
       loader: LaunchPolicy.loaderFromModrinthId(loader),
-      // I modpack Modrinth forzano sempre la classpath, a prescindere dal loader.
+
       forceClassPath: true,
       startOnFirstThread: LaunchUtils.shouldUseStartOnFirstThread(minecraftVersion),
     );
@@ -296,10 +285,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
       },
     );
   }
-
-  // ──────────────────────────────────────────────
-  //  Build
-  // ──────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -523,10 +508,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     );
   }
 
-  /// Scheda "Compatibilità" (versioni Minecraft, loader, ambiente
-  /// client/server) + "Tag". Condivisa tra layout desktop e compatto:
-  /// prima viveva solo dentro _buildDesktopSidebar e spariva del tutto
-  /// sotto i 950px, invece di semplicemente restringersi.
   Widget _buildCompatibilityInfo() {
     final gameVersions = (_projectData?["game_versions"] as List? ?? []).map((version) => version.toString()).toList().reversed.take(10);
     final loaders = (_projectData?["loaders"] as List? ?? []).map((loader) => loader.toString());
@@ -606,8 +587,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     );
   }
 
-  /// Contenitore standard della vista: stesso stile (Material + ombra) delle
-  /// card del resto del launcher.
   Widget _buildCard({required Widget child, EdgeInsetsGeometry padding = EdgeInsets.zero, Clip clipBehavior = Clip.none}) {
     return Material(
       elevation: 15,
@@ -794,8 +773,7 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
   }
 
   Widget _buildStatItem(IconData icon, String label, String value) {
-    // Expanded + FittedBox: nella sidebar desktop (310px) le tre colonne
-    // devono restringersi invece di andare in overflow.
+
     return Expanded(
       child: Column(
         children: [
@@ -815,9 +793,8 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     );
   }
 
-  /// Three states: installing (progress bar) → installed (Remove) → not installed (Download).
   Widget _buildDownloadButton({bool compact = false}) {
-    // ── Installing ─────────────────────────────────────────────────────────
+
     if (_isInstalling) {
       return _buildCard(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -857,7 +834,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
       );
     }
 
-    // ── Already installed ──────────────────────────────────────────────────
     if (_isInstalled) {
       if (compact) {
         return SizedBox.square(
@@ -909,7 +885,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
       );
     }
 
-    // ── Not installed ──────────────────────────────────────────────────────
     return SizedBox(
       width: double.infinity,
       height: 55,
@@ -931,10 +906,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     );
   }
 
-  // ──────────────────────────────────────────────
-  //  Description with collapsible <details> support
-  // ──────────────────────────────────────────────
-
   Widget _buildDescription() {
     final body = (_projectData?["body"] ?? '').toString().trim();
     if (body.isEmpty) return const SizedBox.shrink();
@@ -955,8 +926,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     );
   }
 
-  /// Splits raw markdown/HTML into plain-markdown segments and `<details>` blocks,
-  /// returning a list of ready-to-render widgets.
   List<Widget> _parseDescriptionSegments(String content) {
     final widgets = <Widget>[];
     final detailsRe = RegExp(r'<details>(.*?)</details>', dotAll: true);
@@ -986,7 +955,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     return widgets;
   }
 
-  /// Renders a `<details>` block as a styled, collapsible [ExpansionTile].
   Widget _buildDetailsSection(String title, String body) {
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 6),
@@ -999,7 +967,7 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
             border: Border.all(color: ColorUtils.dynamicAccentColor.withOpacity(0.18), width: 1),
           ),
           child: Theme(
-            // Remove the default ExpansionTile divider lines.
+
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -1007,7 +975,7 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
               expandedCrossAxisAlignment: CrossAxisAlignment.start,
               iconColor: ColorUtils.dynamicAccentColor,
               collapsedIconColor: ColorUtils.secondaryFontColor.withOpacity(0.6),
-              // Custom leading chevron; suppress default trailing arrow.
+
               leading: Icon(Icons.chevron_right, size: 18, color: ColorUtils.dynamicAccentColor.withOpacity(0.7)),
               trailing: const SizedBox.shrink(),
               title: Text(
@@ -1026,7 +994,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
     );
   }
 
-  /// Shared markdown renderer used for both plain content and details bodies.
   Widget _markdownWidget(String data) {
     return MarkdownBody(
       data: data,
@@ -1160,10 +1127,6 @@ class _ModpackDetailViewState extends State<ModpackDetailView> {
       child: Icon(Icons.extension_outlined, size: 20, color: ColorUtils.secondaryFontColor),
     );
   }
-
-  // ──────────────────────────────────────────────
-  //  Helpers
-  // ──────────────────────────────────────────────
 
   int _getFileSize() {
     if (_latestVersion != null && _latestVersion["files"] != null && (_latestVersion["files"] as List).isNotEmpty) {

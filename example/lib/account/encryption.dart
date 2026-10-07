@@ -10,10 +10,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flux_launcher_gui/account/account_key_manager.dart';
 import 'package:flux_launcher_gui/account/account_utils.dart';
 
-// ---------------------------------------------------------------------------
-// AES-GCM con IV casuale per ogni operazione
-// ---------------------------------------------------------------------------
-
 String _aesGcmEncrypt(String plaintext, Uint8List key) {
   if (plaintext.isEmpty) return '';
   final iv = enc.IV(Uint8List.fromList(
@@ -36,18 +32,10 @@ String _aesGcmDecrypt(String b64, Uint8List key) {
   return encrypter.decrypt(enc.Encrypted(combined.sublist(12)), iv: iv);
 }
 
-// ---------------------------------------------------------------------------
-// Chiave token derivata dalla chiave file (separata)
-// ---------------------------------------------------------------------------
-
 Uint8List _deriveTokenKey(Uint8List fileKey) {
   final input = [...fileKey, ...utf8.encode('flux-token-key-v1')];
   return Uint8List.fromList(sha256.convert(input).bytes);
 }
-
-// ---------------------------------------------------------------------------
-// Cifratura file intero
-// ---------------------------------------------------------------------------
 
 void _writeEncryptedFile(File file, String jsonString, Uint8List fileKey) {
   final iv = Uint8List.fromList(
@@ -70,10 +58,6 @@ String _readEncryptedFile(File file, Uint8List fileKey) {
   return encrypter.decrypt(enc.Encrypted(bytes.sublist(12)), iv: iv);
 }
 
-// ---------------------------------------------------------------------------
-// API pubblica — ora async
-// ---------------------------------------------------------------------------
-
 Future<void> saveAccountListToJson(
   List<Account> accountList,
   String filePath,
@@ -93,7 +77,6 @@ Future<void> saveAccountListToJson(
   _writeEncryptedFile(File(filePath), json, fileKey);
 }
 
-/// Restituisce null se la decifratura fallisce, [] se il file non esiste.
 Future<List<Account>?> readAccountListFromJson(String filePath) async {
   final file = File(filePath);
   if (!file.existsSync()) return [];

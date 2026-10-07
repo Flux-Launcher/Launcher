@@ -1,13 +1,8 @@
-// Copyright 2013 The Flutter Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-/// Defines which [TextStyle] objects to use for which Markdown elements.
 class MarkdownStyleSheet {
-  /// Creates an explicit mapping of [TextStyle] objects to Markdown elements.
+
   MarkdownStyleSheet({
     this.a,
     this.p,
@@ -71,8 +66,7 @@ class MarkdownStyleSheet {
           'textScaleFactor is deprecated and cannot be specified when textScaler is specified.',
         ),
         textScaler = textScaler ??
-            // Internally, only textScaler is used, so convert the scale factor
-            // to a linear scaler.
+
             (textScaleFactor == null ? null : TextScaler.linear(textScaleFactor)),
         _styles = <String, TextStyle?>{
           'a': a,
@@ -97,7 +91,6 @@ class MarkdownStyleSheet {
           'td': tableBody,
         };
 
-  /// Creates a [MarkdownStyleSheet] from the [TextStyle]s in the provided [ThemeData].
   factory MarkdownStyleSheet.fromTheme(ThemeData theme) {
     assert(theme.textTheme.bodyMedium?.fontSize != null);
     return MarkdownStyleSheet(
@@ -164,7 +157,6 @@ class MarkdownStyleSheet {
     );
   }
 
-  /// Creates a [MarkdownStyleSheet] from the [TextStyle]s in the provided [CupertinoThemeData].
   factory MarkdownStyleSheet.fromCupertinoTheme(CupertinoThemeData theme) {
     assert(theme.textTheme.textStyle.fontSize != null);
     return MarkdownStyleSheet(
@@ -260,10 +252,6 @@ class MarkdownStyleSheet {
     );
   }
 
-  /// Creates a [MarkdownStyle] from the [TextStyle]s in the provided [ThemeData].
-  ///
-  /// This constructor uses larger fonts for the headings than in
-  /// [MarkdownStyle.fromTheme].
   factory MarkdownStyleSheet.largeFromTheme(ThemeData theme) {
     return MarkdownStyleSheet(
       a: const TextStyle(color: Colors.blue),
@@ -329,8 +317,6 @@ class MarkdownStyleSheet {
     );
   }
 
-  /// Creates a [MarkdownStyleSheet] based on the current style, with the
-  /// provided parameters overridden.
   MarkdownStyleSheet copyWith({
     TextStyle? a,
     TextStyle? p,
@@ -394,8 +380,7 @@ class MarkdownStyleSheet {
       textScaler == null || textScaleFactor == null,
       'textScaleFactor is deprecated and cannot be specified when textScaler is specified.',
     );
-    // If either of textScaler or textScaleFactor is non-null, pass null for the
-    // other instead of the previous value, since only one is allowed.
+
     final TextScaler? newTextScaler = textScaler ?? (textScaleFactor == null ? this.textScaler : null);
     final double? nextTextScaleFactor = textScaleFactor ?? (textScaler == null ? this.textScaleFactor : null);
     return MarkdownStyleSheet(
@@ -459,8 +444,6 @@ class MarkdownStyleSheet {
     );
   }
 
-  /// Returns a new text style that is a combination of this style and the given
-  /// [other] style.
   MarkdownStyleSheet merge(MarkdownStyleSheet? other) {
     if (other == null) {
       return this;
@@ -522,200 +505,131 @@ class MarkdownStyleSheet {
       codeblockAlign: other.codeblockAlign,
       textScaleFactor: other.textScaleFactor,
       superscriptFontFeatureTag: other.superscriptFontFeatureTag,
-      // Only one of textScaler and textScaleFactor can be passed. If
-      // other.textScaleFactor is non-null, then the sheet was created with a
-      // textScaleFactor and the textScaler was derived from that, so should be
-      // ignored so that the textScaleFactor continues to be set.
+
       textScaler: other.textScaleFactor == null ? other.textScaler : null,
     );
   }
 
-  /// The [TextStyle] to use for `a` elements.
   final TextStyle? a;
 
-  /// The [TextStyle] to use for `p` elements.
   final TextStyle? p;
 
-  /// The padding to use for `p` elements.
   final EdgeInsets? pPadding;
 
-  /// The [TextStyle] to use for `code` elements.
   final TextStyle? code;
 
-  /// The [TextStyle] to use for `h1` elements.
   final TextStyle? h1;
 
-  /// The padding to use for `h1` elements.
   final EdgeInsets? h1Padding;
 
-  /// The [TextStyle] to use for `h2` elements.
   final TextStyle? h2;
 
-  /// The padding to use for `h2` elements.
   final EdgeInsets? h2Padding;
 
-  /// The [TextStyle] to use for `h3` elements.
   final TextStyle? h3;
 
-  /// The padding to use for `h3` elements.
   final EdgeInsets? h3Padding;
 
-  /// The [TextStyle] to use for `h4` elements.
   final TextStyle? h4;
 
-  /// The padding to use for `h4` elements.
   final EdgeInsets? h4Padding;
 
-  /// The [TextStyle] to use for `h5` elements.
   final TextStyle? h5;
 
-  /// The padding to use for `h5` elements.
   final EdgeInsets? h5Padding;
 
-  /// The [TextStyle] to use for `h6` elements.
   final TextStyle? h6;
 
-  /// The padding to use for `h6` elements.
   final EdgeInsets? h6Padding;
 
-  /// The [TextStyle] to use for `em` elements.
   final TextStyle? em;
 
-  /// The [TextStyle] to use for `strong` elements.
   final TextStyle? strong;
 
-  /// The [TextStyle] to use for `del` elements.
   final TextStyle? del;
 
-  /// The [TextStyle] to use for `blockquote` elements.
   final TextStyle? blockquote;
 
-  /// The [TextStyle] to use for `img` elements.
   final TextStyle? img;
 
-  /// The [TextStyle] to use for `input` elements.
   final TextStyle? checkbox;
 
-  /// The amount of vertical space to use between block-level elements.
   final double? blockSpacing;
 
-  /// The amount of horizontal space to indent list items.
   final double? listIndent;
 
-  /// The [TextStyle] to use for bullets.
   final TextStyle? listBullet;
 
-  /// The padding to use for bullets.
   final EdgeInsets? listBulletPadding;
 
-  /// The [TextStyle] to use for `th` elements.
   final TextStyle? tableHead;
 
-  /// The [TextStyle] to use for `td` elements.
   final TextStyle? tableBody;
 
-  /// The [TextAlign] to use for `th` elements.
   final TextAlign? tableHeadAlign;
 
-  /// The padding to use for `table` elements.
   final EdgeInsets? tablePadding;
 
-  /// The [TableBorder] to use for `table` elements.
   final TableBorder? tableBorder;
 
-  /// The [TableColumnWidth] to use for `th` and `td` elements.
   final TableColumnWidth? tableColumnWidth;
 
-  /// The scrollbar thumbVisibility when the table is scrollable.
   final bool? tableScrollbarThumbVisibility;
 
-  /// The padding to use for `th` and `td` elements.
   final EdgeInsets? tableCellsPadding;
 
-  /// The decoration to use for `th` and `td` elements.
   final Decoration? tableCellsDecoration;
 
-  /// The padding to use for `th` elements.
-  ///
-  /// If null, defaults to [tableCellsPadding].
   final EdgeInsets? tableHeadCellsPadding;
 
-  /// The decoration to use for `th` elements.
-  ///
-  /// If null, defaults to [tableCellsDecoration].
   final Decoration? tableHeadCellsDecoration;
 
-  /// The [TableCellVerticalAlignment] to use for `th` and `td` elements.
   final TableCellVerticalAlignment tableVerticalAlignment;
 
-  /// The padding to use for `blockquote` elements.
   final EdgeInsets? blockquotePadding;
 
-  /// The decoration to use behind `blockquote` elements.
   final Decoration? blockquoteDecoration;
 
-  /// The padding to use for `pre` elements.
   final EdgeInsets? codeblockPadding;
 
-  /// The decoration to use behind for `pre` elements.
   final Decoration? codeblockDecoration;
 
-  /// The decoration to use for `hr` elements.
   final Decoration? horizontalRuleDecoration;
 
-  /// The [WrapAlignment] to use for normal text. Defaults to start.
   final WrapAlignment textAlign;
 
-  /// The [WrapAlignment] to use for h1 text. Defaults to start.
   final WrapAlignment h1Align;
 
-  /// The [WrapAlignment] to use for h2 text. Defaults to start.
   final WrapAlignment h2Align;
 
-  /// The [WrapAlignment] to use for h3 text. Defaults to start.
   final WrapAlignment h3Align;
 
-  /// The [WrapAlignment] to use for h4 text. Defaults to start.
   final WrapAlignment h4Align;
 
-  /// The [WrapAlignment] to use for h5 text. Defaults to start.
   final WrapAlignment h5Align;
 
-  /// The [WrapAlignment] to use for h6 text. Defaults to start.
   final WrapAlignment h6Align;
 
-  /// The [WrapAlignment] to use for an unordered list. Defaults to start.
   final WrapAlignment unorderedListAlign;
 
-  /// The [WrapAlignment] to use for an ordered list. Defaults to start.
   final WrapAlignment orderedListAlign;
 
-  /// The [WrapAlignment] to use for a blockquote. Defaults to start.
   final WrapAlignment blockquoteAlign;
 
-  /// The [WrapAlignment] to use for a code block. Defaults to start.
   final WrapAlignment codeblockAlign;
 
-  /// The text scaler to use in textual elements.
   final TextScaler? textScaler;
 
-  /// The text scale factor to use in textual elements.
-  ///
-  /// This will be non-null only if the sheet was created with the deprecated
-  /// [textScaleFactor] instead of [textScaler].
   @Deprecated('Use textScaler instead.')
   final double? textScaleFactor;
 
-  /// Custom font feature tag for font which does not support `sups'
-  /// feature to create superscript in footnotes.
   final String? superscriptFontFeatureTag;
 
-  /// A [Map] from element name to the corresponding [TextStyle] object.
   Map<String, TextStyle?> get styles => _styles;
   Map<String, TextStyle?> _styles;
 
   @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+
   bool operator ==(Object other) {
     if (identical(this, other)) {
       return true;
@@ -782,7 +696,7 @@ class MarkdownStyleSheet {
   }
 
   @override
-  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+
   int get hashCode {
     return Object.hashAll(<Object?>[
       a,

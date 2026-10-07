@@ -9,7 +9,6 @@ import 'package:flux_launcher_gui/account/encryption.dart';
 import 'package:flux_launcher_gui/account/uuid_utils.dart';
 import 'package:flux_launcher_gui/globals.dart';
 
-// Modello degli account
 class Account {
   String username;
   String uuid;
@@ -50,10 +49,9 @@ class Account {
   }
 }
 
-// Genera un uuid offline per gli SP
 Uuid getOfflinePlayerUuid(String username) {
   Int8List bytes = Int8List.fromList(utf8.encode("OfflinePlayer:$username"));
-  List<int> unsignedBytes = md5.convert(bytes).bytes; // array di byte unsigned
+  List<int> unsignedBytes = md5.convert(bytes).bytes;
   Int8List signedBytes = Int8List.fromList(
     unsignedBytes.map((b) => b > 127 ? b - 256 : b).toList(),
   );
@@ -61,19 +59,15 @@ Uuid getOfflinePlayerUuid(String username) {
   return Uuid.nameUUIDFromBytes(signedBytes);
 }
 
-// Discrimina se la skin SP è steve/alex in base all'uuid
 bool isOfflineSlimSkin(String username) {
   return (getOfflinePlayerUuid(username).hashCode & 1) == 1;
 }
 
-// Salva gli account su disco
 void saveAccounts() {
   final filePath = "${LauncherUtils.getApplicationFolder("flux")}/accounts.json";
   saveAccountListToJson(Globals.accounts, filePath);
 }
 
-// Legge una lista di account da un file JSON. Lancia FormatException se il file
-// non esiste, non è una lista di account validi o è vuoto.
 List<Account> importAccountListFromJsonPlain(String filePath) {
   final file = File(filePath);
 
@@ -98,7 +92,6 @@ List<Account> importAccountListFromJsonPlain(String filePath) {
   }).toList();
 }
 
-// Aggiunge a Globals.accounts gli account importati non ancora presenti (per uuid)
 int mergeImportedAccounts(List<Account> imported) {
   final known = Globals.accounts.map((a) => a.uuid).toSet();
   var added = 0;

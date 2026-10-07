@@ -37,18 +37,12 @@ class NewsUtils {
         mergedEntries.add(newEntry);
       }
     }
-    // Le entry del vecchio feed (javaPatchNotes.json) hanno "date": null, e
-    // "version" è una stringa libera ("1.21.4", "24w14a", "1.9-pre1"...):
-    // ordinarle per stringa mescolava snapshot e release. Si ordina per data
-    // di pubblicazione, dalla più recente; quando la entry non ne ha una, si
-    // usa la releaseTime del manifest versioni Mojang (stesso id di versione).
+
     final releaseTimes = await _manifestReleaseTimes();
     final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     DateTime dateOf(Map<String, dynamic> entry) =>
         DateTime.tryParse(entry["date"]?.toString() ?? "") ?? releaseTimes[entry["version"]?.toString()] ?? epoch;
 
-    // Il sort di Dart non è stabile: l'indice originale fa da spareggio così
-    // le entry senza alcuna data mantengono l'ordine del feed.
     final indexed = [for (var i = 0; i < mergedEntries.length; i++) (i, mergedEntries[i])];
     indexed.sort((a, b) {
       final byDate = dateOf(b.$2).compareTo(dateOf(a.$2));
@@ -60,9 +54,6 @@ class NewsUtils {
     Globals.vanillaNewsResponse = mergedEntries;
   }
 
-  /// id di versione -> releaseTime dal manifest Mojang. getNews e getVersions
-  /// partono in parallelo, quindi il manifest globale può non essere ancora
-  /// pronto: in quel caso lo si scarica qui.
   static Future<Map<String, DateTime>> _manifestReleaseTimes() async {
     try {
       var manifest = Globals.vanillaVersionsResponse;

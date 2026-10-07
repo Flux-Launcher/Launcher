@@ -1,7 +1,3 @@
-// Copyright 2013 The Flutter Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -50,56 +46,27 @@ class _TableElement {
   final List<TableRow> rows = <TableRow>[];
 }
 
-/// A collection of widgets that should be placed adjacent to (inline with)
-/// other inline elements in the same parent block.
-///
-/// Inline elements can be textual (a/em/strong) represented by [Text.rich]
-/// widgets or images (img) represented by [Image.network] widgets.
-///
-/// Inline elements can be nested within other inline elements, inheriting their
-/// parent's style along with the style of the block they are in.
-///
-/// When laying out inline widgets, first, any adjacent Text.rich widgets are
-/// merged, then, all inline widgets are enclosed in a parent [Wrap] widget.
 class _InlineElement {
   _InlineElement(this.tag, {this.style});
 
   final String? tag;
 
-  /// Created by merging the style defined for this element's [tag] in the
-  /// delegate's [MarkdownStyleSheet] with the style of its parent.
   final TextStyle? style;
 
   final List<Widget> children = <Widget>[];
 }
 
-/// A delegate used by [MarkdownBuilder] to control the widgets it creates.
 abstract class MarkdownBuilderDelegate {
-  /// Returns the [BuildContext] of the [MarkdownWidget].
-  ///
-  /// The context will be passed down to the
-  /// [MarkdownElementBuilder.visitElementBefore] method and allows elements to
-  /// get information from the context.
+
   BuildContext get context;
 
-  /// Returns a gesture recognizer to use for an `a` element with the given
-  /// text, `href` attribute, and title.
   GestureRecognizer createLink(String text, String? href, String title);
 
-  /// Returns formatted text to use to display the given contents of a `pre`
-  /// element.
-  ///
-  /// The `styleSheet` is the value of [MarkdownBuilder.styleSheet].
   TextSpan formatText(MarkdownStyleSheet styleSheet, String code);
 }
 
-/// Builds a [Widget] tree from parsed Markdown.
-///
-/// See also:
-///
-///  * [Markdown], which is a widget that parses and displays Markdown.
 class MarkdownBuilder implements md.NodeVisitor {
-  /// Creates an object that builds a [Widget] tree from parsed Markdown.
+
   MarkdownBuilder({
     required this.delegate,
     required this.selectable,
@@ -117,56 +84,32 @@ class MarkdownBuilder implements md.NodeVisitor {
     this.softLineBreak = false,
   });
 
-  /// A delegate that controls how link and `pre` elements behave.
   final MarkdownBuilderDelegate delegate;
 
-  /// If true, the text is selectable.
-  ///
-  /// Defaults to false.
   final bool selectable;
 
-  /// Defines which [TextStyle] objects to use for each type of element.
   final MarkdownStyleSheet styleSheet;
 
-  /// The base directory holding images referenced by Img tags with local or network file paths.
   final String? imageDirectory;
 
-  /// Call when build an image widget.
   final MarkdownImageBuilder? imageBuilder;
 
-  /// Call when build a checkbox widget.
   final MarkdownCheckboxBuilder? checkboxBuilder;
 
-  /// Called when building a custom bullet.
   final MarkdownBulletBuilder? bulletBuilder;
 
-  /// Call when build a custom widget.
   final Map<String, MarkdownElementBuilder> builders;
 
-  /// Call when build a padding for widget.
   final Map<String, MarkdownPaddingBuilder> paddingBuilders;
 
-  /// Whether to allow the widget to fit the child content.
   final bool fitContent;
 
-  /// Controls the cross axis alignment for the bullet and list item content
-  /// in lists.
-  ///
-  /// Defaults to [MarkdownListItemCrossAxisAlignment.baseline], which
-  /// does not allow for intrinsic height measurements.
   final MarkdownListItemCrossAxisAlignment listItemCrossAxisAlignment;
 
-  /// Called when the user changes selection when [selectable] is set to true.
   final MarkdownOnSelectionChangedCallback? onSelectionChanged;
 
-  /// Default tap handler used when [selectable] is set to true
   final VoidCallback? onTapText;
 
-  /// The soft line break is used to identify the spaces at the end of aline of
-  /// text and the leading spaces in the immediately following the line of text.
-  ///
-  /// Default these spaces are removed in accordance with the Markdown
-  /// specification on soft line breaks when lines of text are joined.
   final bool softLineBreak;
 
   final List<String> _listIndents = <String>[];
@@ -178,9 +121,6 @@ class MarkdownBuilder implements md.NodeVisitor {
   String? _lastVisitedTag;
   bool _isInBlockquote = false;
 
-  /// Returns widgets that display the given Markdown nodes.
-  ///
-  /// The returned widgets are typically used as children in a [ListView].
   List<Widget> build(List<md.Node> nodes) {
     _listIndents.clear();
     _blocks.clear();
@@ -250,10 +190,7 @@ class MarkdownBuilder implements md.NodeVisitor {
         }
         _tables.single.rows.add(TableRow(
           decoration: decoration,
-          // TODO(stuartmorgan): This should be fixed, not suppressed; enabling
-          // this lint warning exposed that the builder is modifying the
-          // children of TableRows, even though they are @immutable.
-          // ignore: prefer_const_literals_to_create_immutables
+
           children: <Widget>[],
         ));
       }
@@ -265,7 +202,7 @@ class MarkdownBuilder implements md.NodeVisitor {
     } else {
       if (tag == 'a' && !builders.containsKey('a')) {
         final String? text = extractTextFromElement(element);
-        // Don't add empty links
+
         if (text == null) {
           return false;
         }
@@ -279,9 +216,6 @@ class MarkdownBuilder implements md.NodeVisitor {
 
       _addParentInlineIfNeeded(_blocks.last.tag);
 
-      // The Markdown parser passes empty table data tags for blank
-      // table cells. Insert a text node with an empty string in this
-      // case for the table cell to get properly created.
       if (element.tag == 'td' && element.children != null && element.children!.isEmpty) {
         element.children!.add(md.Text(''));
       }
@@ -294,7 +228,6 @@ class MarkdownBuilder implements md.NodeVisitor {
     return true;
   }
 
-  /// Returns the text, if any, from [element] and its descendants.
   String? extractTextFromElement(md.Node element) {
     return element is md.Element && (element.children?.isNotEmpty ?? false)
         ? element.children!.map((md.Node e) => e is md.Text ? e.text : extractTextFromElement(e)).join()
@@ -303,31 +236,19 @@ class MarkdownBuilder implements md.NodeVisitor {
 
   @override
   void visitText(md.Text text) {
-    // Don't allow text directly under the root.
+
     if (_blocks.last.tag == null) {
       return;
     }
 
     _addParentInlineIfNeeded(_blocks.last.tag);
 
-    // Define trim text function to remove spaces from text elements in
-    // accordance with Markdown specifications.
     String trimText(String text) {
-      // The leading spaces pattern is used to identify spaces
-      // at the beginning of a line of text.
+
       final RegExp leadingSpacesPattern = RegExp(r'^ *');
 
-      // The soft line break is used to identify the spaces at the end of a line
-      // of text and the leading spaces in the immediately following the line
-      // of text. These spaces are removed in accordance with the Markdown
-      // specification on soft line breaks when lines of text are joined.
       final RegExp softLineBreakPattern = RegExp(r' ?\n *');
 
-      // Leading spaces following a hard line break are ignored.
-      // https://github.github.com/gfm/#example-657
-      // Leading spaces in paragraph or list item are ignored
-      // https://github.github.com/gfm/#example-192
-      // https://github.github.com/gfm/#example-236
       if (const <String>['ul', 'ol', 'li', 'p', 'br'].contains(_lastVisitedTag)) {
         text = text.replaceAll(leadingSpacesPattern, '');
       }
@@ -498,7 +419,7 @@ class MarkdownBuilder implements md.NodeVisitor {
           }
         }
       } else if (tag == 'img') {
-        // create an image widget for this image
+
         current.children.add(_buildPadding(
           padding,
           _buildImage(
@@ -579,7 +500,6 @@ class MarkdownBuilder implements md.NodeVisitor {
       children: _tables.removeLast().rows,
     );
 
-    // Clip the table to the border radius if one is specified
     final BorderRadiusGeometry? borderRadius = styleSheet.tableBorder?.borderRadius;
     if (borderRadius != null) {
       return ClipRRect(
@@ -773,14 +693,12 @@ class MarkdownBuilder implements md.NodeVisitor {
     _inlines.clear();
   }
 
-  /// Extracts all spans from an inline element and merges them into a single list
   Iterable<InlineSpan> _getInlineSpansFromSpan(InlineSpan span) {
-    // If the span is not a TextSpan or it has no children, return the span
+
     if (span is! TextSpan || span.children == null) {
       return <InlineSpan>[span];
     }
 
-    // Merge the style of the parent with the style of the children
     final Iterable<InlineSpan> spans = span.children!.map((InlineSpan childSpan) {
       if (childSpan is TextSpan) {
         return TextSpan(
@@ -797,20 +715,13 @@ class MarkdownBuilder implements md.NodeVisitor {
     return spans;
   }
 
-  // Accesses the TextSpan property correctly depending on the widget type.
-  // Returns null if not a valid (text) widget.
   InlineSpan? _getInlineSpanFromText(Widget widget) => switch (widget) { SelectableText() => widget.textSpan, Text() => widget.textSpan, RichText() => widget.text, _ => null };
 
-  /// Merges adjacent [TextSpan] children.
-  /// Also forces a specific [TextAlign] regardless of merging.
-  /// This is essential for table column alignment, since desired column alignment
-  /// is discovered after the text widgets have been created. This function is the
-  /// last chance to enforce the desired column alignment in the texts.
   List<Widget> _mergeInlineChildren(
     List<Widget> children,
     TextAlign? textAlign,
   ) {
-    // List of text widgets (merged) and non-text widgets (non-merged)
+
     final List<Widget> mergedWidgets = <Widget>[];
 
     bool lastIsText = false;
@@ -819,17 +730,16 @@ class MarkdownBuilder implements md.NodeVisitor {
       final bool currentIsText = currentSpan != null;
 
       if (!currentIsText) {
-        // There is no merging to do, so just add and continue
+
         mergedWidgets.add(child);
         lastIsText = false;
         continue;
       }
 
-      // Extracted spans from the last and the current widget
       List<InlineSpan> spans = <InlineSpan>[];
 
       if (lastIsText) {
-        // Removes last widget from the list for merging and extracts its spans
+
         spans.addAll(_getInlineSpansFromSpan(_getInlineSpanFromText(mergedWidgets.removeLast())!));
       }
 
@@ -839,7 +749,7 @@ class MarkdownBuilder implements md.NodeVisitor {
       final Widget mergedWidget;
 
       if (spans.isEmpty) {
-        // no spans found, just insert the current widget
+
         mergedWidget = child;
       } else {
         final InlineSpan first = spans.first;
@@ -924,7 +834,6 @@ class MarkdownBuilder implements md.NodeVisitor {
     return EdgeInsets.zero;
   }
 
-  /// Combine text spans with equivalent properties into a single span.
   List<InlineSpan> _mergeSimilarTextSpans(List<InlineSpan> textSpans) {
     if (textSpans.length < 2) {
       return textSpans;
@@ -957,13 +866,11 @@ class MarkdownBuilder implements md.NodeVisitor {
       }
     }
 
-    // When the mergered spans compress into a single TextSpan return just that
-    // TextSpan, otherwise bundle the set of TextSpans under a single parent.
     return mergedSpans;
   }
 
   Widget _buildRichText(TextSpan text, {TextAlign? textAlign, String? key}) {
-    //Adding a unique key prevents the problem of using the same link handler for text spans with the same text
+
     final Key k = key == null ? UniqueKey() : Key(key);
     if (selectable) {
       return SelectableText.rich(

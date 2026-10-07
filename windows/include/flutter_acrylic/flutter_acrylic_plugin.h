@@ -17,7 +17,7 @@ FLUTTER_PLUGIN_EXPORT void FlutterAcrylicPluginRegisterWithRegistrar(
     FlutterDesktopPluginRegistrarRef registrar);
 
 #if defined(__cplusplus)
-}  // extern "C"
+}
 #endif
 
-#endif  // FLUTTER_PLUGIN_FLUTTER_ACRYLIC_PLUGIN_H_
+#endif

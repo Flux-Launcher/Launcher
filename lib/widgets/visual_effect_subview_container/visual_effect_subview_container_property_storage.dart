@@ -1,14 +1,9 @@
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 
-/// Storage for a [VisualEffectSubviewProperties] instance.
-///
-/// Provides methods to identify changes in said instance that need to be
-/// transmitted to the Swift side.
 class VisualEffectSubviewContainerPropertyStorage {
   VisualEffectSubviewProperties _currentProperties =
       VisualEffectSubviewProperties();
 
-  /// Returns which properties have changed.
   _VisualEffectSubviewContainerPropertyChange _getPropertyChange(
     VisualEffectSubviewProperties newProperties,
   ) {
@@ -38,13 +33,6 @@ class VisualEffectSubviewContainerPropertyStorage {
     );
   }
 
-  /// Returns a [VisualEffectSubviewProperties] instance in which only the
-  /// fields whose values need to be transmitted to the Swift side are
-  /// populated.
-  ///
-  /// Note that the frame's size and position are represented as an `NSSize` or
-  /// an `NSPoint` object respectively. For this reason, those two properties
-  /// are treated as a single value.
   VisualEffectSubviewProperties getDeltaProperties(
     VisualEffectSubviewProperties newProperties,
   ) {
@@ -86,10 +74,6 @@ class VisualEffectSubviewContainerPropertyStorage {
     );
   }
 
-  /// Updates the internal [VisualEffectSubviewProperties] instance.
-  ///
-  /// The value of a property only gets overwritten if its value in the
-  /// [newProperties] object is non-null.
   void updateProperties(VisualEffectSubviewProperties newProperties) {
     _currentProperties = VisualEffectSubviewProperties(
       frameWidth: newProperties.frameWidth ?? _currentProperties.frameWidth,
@@ -106,10 +90,6 @@ class VisualEffectSubviewContainerPropertyStorage {
   }
 }
 
-/// A change in a [VisualEffectSubviewContainer]'s
-/// [VisualEffectSubviewProperties].
-///
-/// Each field corresponds to a property whose value may have changed.
 class _VisualEffectSubviewContainerPropertyChange {
   final bool hasFrameSizeChanged;
   final bool hasFramePositionChanged;

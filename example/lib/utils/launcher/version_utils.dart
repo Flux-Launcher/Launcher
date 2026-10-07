@@ -297,21 +297,6 @@ class VersionUtils {
     }
   }
 
-  /// Resolves a version id (plus optional hints) to its [ModLoader] and
-  /// real Minecraft version, without requiring the version to be installed
-  /// or the remote manifest to be available.
-  ///
-  /// Resolution order for the Minecraft version:
-  /// 1. an explicit [minecraftVersion], when given;
-  /// 2. the installed profile's `inheritsFrom` (recursing through it when
-  ///    the parent id itself self-describes a loader, e.g. a not-yet-
-  ///    installed Forge build);
-  /// 3. parsing [id] itself using the loader's naming convention.
-  ///
-  /// The loader is detected from [id], refined by an installed profile's
-  /// `libraries` (the way real Forge/Fabric/Quilt/NeoForge installers
-  /// record it when `inheritsFrom` points at a plain vanilla version), and
-  /// falls back to [type] when [id] doesn't self-describe a loader.
   static LaunchProfile resolveLaunchProfile(
     String id, {
     String type = '',
@@ -328,7 +313,7 @@ class VersionUtils {
     String? gameDirectory,
     required int depth,
   }) {
-    // Guards against a malformed/cyclic inheritsFrom chain.
+
     if (depth > 10) {
       return LaunchProfile(minecraftVersion: minecraftVersion ?? id, loader: ModLoader.vanilla);
     }
@@ -358,8 +343,7 @@ class VersionUtils {
           final parentLoader = LaunchPolicy.detectLoaderFromId(inheritsFrom);
 
           if (parentLoader != ModLoader.vanilla) {
-            // The parent id itself encodes a loader (e.g. a Forge build
-            // that hasn't been installed yet): resolve it the same way.
+
             final parentProfile = _resolveLaunchProfile(inheritsFrom, type: type, gameDirectory: gameDirectory, depth: depth + 1);
             resolvedVersion = parentProfile.minecraftVersion;
             if (loader == ModLoader.vanilla) loader = parentProfile.loader;
@@ -368,7 +352,7 @@ class VersionUtils {
           }
         }
       } catch (_) {
-        // Corrupt or unreadable profile JSON: fall back to id-based parsing.
+
       }
     }
 
@@ -401,7 +385,6 @@ class VersionUtils {
     Globals.incompatibleJson = json.decode(response.body);
   }
 
-  // Metodo helper per normalizzare il tipo e la versione
   static ({String gameType, String gameVer}) _normalizeTypeAndVersion(String type, String versionId, BuildContext context) {
     var gameType = type.toLowerCase();
     var gameVer = versionId.toLowerCase();
@@ -410,9 +393,6 @@ class VersionUtils {
       gameVer = gameVer.split(" ").first;
     }
 
-    // "latest"/"snapshot" are aliases for whatever the manifest currently
-    // considers the newest release/snapshot; resolve them so range checks
-    // (which compare against concrete version ids) can actually match.
     if (gameVer == "latest" && Globals.vanillaVersionsResponse != null) {
       final resolved = Globals.vanillaVersionsResponse["latest"]?["release"];
       if (resolved is String && resolved.isNotEmpty) gameVer = resolved.toLowerCase();
@@ -439,7 +419,6 @@ class VersionUtils {
   static bool isCompatible(String type, String versionId, BuildContext context) {
     var gameType = type.toLowerCase();
 
-    // We assume that latest vanilla's are good and compatible
     if (gameType.contains(AppLocalizations.of(context)?.vanilla_release_title.toLowerCase() as Pattern)) return true;
     if (gameType.contains(AppLocalizations.of(context)?.vanilla_snapshot_title.toLowerCase() as Pattern)) return true;
 
@@ -451,7 +430,6 @@ class VersionUtils {
   static String? getIncompatibilityReason(String type, String versionId, BuildContext context) {
     var gameType = type.toLowerCase();
 
-    // Le versioni vanilla sono sempre compatibili
     if (gameType.contains(AppLocalizations.of(context)?.vanilla_release_title.toLowerCase() as Pattern)) return null;
     if (gameType.contains(AppLocalizations.of(context)?.vanilla_snapshot_title.toLowerCase() as Pattern)) return null;
 
@@ -468,9 +446,6 @@ class VersionUtils {
       final currentOS = _getCurrentOS();
       final currentArch = _getCurrentArch();
 
-      // Use the exact same mode the actual launch would use for this
-      // loader/version, so compatibility checks never disagree with what
-      // happens when the user actually launches.
       final loader = LaunchPolicy.detectLoaderFromType(loaderType);
       final useClasspath = LaunchPolicy.resolveEnableClassPathFor(loader, version);
       final rangesToCheck = loaderConfig[useClasspath ? 'classpath' : 'classloader']?['ranges'] as List? ?? [];

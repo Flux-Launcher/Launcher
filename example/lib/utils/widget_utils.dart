@@ -33,13 +33,7 @@ class CustomSettingSwitchStyle {
 }
 
 class WidgetUtils {
-  /// Numero di colonne per una griglia responsive larga [width], dati una
-  /// larghezza minima di tile [minTileWidth] e uno spacing tra tile
-  /// [spacing]. Usata da tutte le griglie del launcher (home, flux,
-  /// vanilla, modloaders/modpack, alt manager, browser Modrinth) così che
-  /// il numero di colonne resti coerente e prevedibile tra le varie
-  /// schermate e durante il resize della finestra, invece di dipendere da
-  /// logiche duplicate e leggermente diverse in ogni file.
+
   static int responsiveColumnCount(
     double width, {
     double minTileWidth = 300,
@@ -53,7 +47,6 @@ class WidgetUtils {
     return columns;
   }
 
-  /** Switch impostazioni */
   static Widget buildSettingSwitchItem(
     String name,
     String name2,
@@ -91,7 +84,7 @@ class WidgetUtils {
                       ),
                     ),
                   ),
-                  /** Nome del setting */
+
                   Padding(
                     padding: const EdgeInsets.fromLTRB(0, 18, 10, 0),
                     child: Column(
@@ -111,7 +104,6 @@ class WidgetUtils {
                 ],
               ),
 
-              /** Interruttore */
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -152,7 +144,6 @@ class WidgetUtils {
     );
   }
 
-  /** Textfield */
   static Widget buildSettingTextItem(
     dynamic child,
     Color background,
@@ -171,7 +162,6 @@ class WidgetUtils {
     );
   }
 
-  /** Container riempibile impostazioni */
   static Widget buildSettingContainerItem(dynamic widgets) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
@@ -184,10 +174,6 @@ class WidgetUtils {
       ),
     );
   }
-
-  /////////////////////////////////
-  //// ALTRI ELEMENTI GRAFICI /////
-  /////////////////////////////////
 
   static Widget buildButton(
     IconData icon,
@@ -333,7 +319,7 @@ class WidgetUtils {
       context,
       "Console",
       <Widget>[
-        // Un solo scroll gestito internamente da VirtualizedLogView
+
         SizedBox(
           width: MediaQuery.of(context).size.width,
           height: MediaQuery.of(context).size.height * 0.6,
@@ -571,7 +557,7 @@ class WidgetUtils {
       shadows: [
         Shadow(
           color: ColorUtils.defaultShadowColor,
-          // Choose the color of the shadow
+
           blurRadius: 15.0,
           offset: const Offset(2.0, 2.0),
         ),
@@ -671,10 +657,6 @@ class _WindowButtonsState extends State<WindowButtons> {
   }
 }
 
-/// Campo di testo delle impostazioni: il bordo di focus viene disegnato
-/// sull'intero contenitore (testo + eventuali pulsanti a destra) invece che
-/// sul solo TextField, così non compare più una linea verticale in mezzo
-/// alla riga quando il campo è selezionato.
 class _SettingTextItem extends StatefulWidget {
   const _SettingTextItem({
     required this.child,

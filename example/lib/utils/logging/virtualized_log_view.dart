@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'log_controller.dart';
 
-/// Regole di colorazione: se la riga contiene una delle stringhe chiave
-/// (case-insensitive) viene applicato il colore corrispondente.
-/// L'ordine conta: la prima regola che matcha vince.
 class LogColorRule {
   final String keyword;
   final Color color;
@@ -17,7 +14,6 @@ class LogColorRule {
   });
 }
 
-/// Regole predefinite per log Minecraft / Java.
 const List<LogColorRule> defaultLogColorRules = [
   LogColorRule(keyword: 'exception', color: Color(0xFFFF5555)),
   LogColorRule(keyword: 'error', color: Color(0xFFFF5555)),
@@ -28,7 +24,7 @@ const List<LogColorRule> defaultLogColorRules = [
   LogColorRule(keyword: '[launcher]', color: Colors.deepPurpleAccent),
   LogColorRule(keyword: 'info', color: Color(0xFF000000)),
   LogColorRule(keyword: 'debug', color: Color(0xFF6272A4)),
-  LogColorRule(keyword: 'at ', color: Color(0xFF6272A4)), // stack trace
+  LogColorRule(keyword: 'at ', color: Color(0xFF6272A4)),
 ];
 
 Color _colorForLine(String line, List<LogColorRule> rules, Color fallback) {
@@ -41,14 +37,6 @@ Color _colorForLine(String line, List<LogColorRule> rules, Color fallback) {
   return fallback;
 }
 
-/// A high-performance, read-only log viewer that renders **only visible lines**
-/// using [ListView.builder]. Supporta:
-///   • Colorazione per keyword configurabile
-///   • Auto-scroll al fondo con nuove righe
-///   • Scroll manuale senza interruzioni
-///   • Resume auto-scroll tornando in fondo
-///   • [wrapLines] true  → righe a capo, solo scroll verticale
-///   • [wrapLines] false → riga singola, itemExtent fisso + scroll orizzontale
 class VirtualizedLogView extends StatefulWidget {
   const VirtualizedLogView({
     super.key,
@@ -69,25 +57,20 @@ class VirtualizedLogView extends StatefulWidget {
   final LogController controller;
   final Color backgroundColor;
 
-  /// Colore di fallback per le righe che non matchano nessuna regola.
   final Color textColor;
 
   final double fontSize;
   final String fontFamily;
   final double lineHeight;
 
-  /// Usato solo quando [wrapLines] è false (scroll orizzontale).
   final double minWidth;
 
   final EdgeInsets padding;
   final bool showScrollbar;
   final bool autoScroll;
 
-  /// Regole di colorazione. Passa [] per disabilitare del tutto.
   final List<LogColorRule> colorRules;
 
-  /// true  → righe a capo, altezza variabile, solo scroll verticale.
-  /// false → riga singola, itemExtent fisso (O(1)), scroll orizzontale.
   final bool wrapLines;
 
   @override
@@ -99,7 +82,6 @@ class _VirtualizedLogViewState extends State<VirtualizedLogView> {
   late final ScrollController _horizontalCtrl;
   bool _autoScroll = true;
 
-  // Usato solo in modalità no-wrap per itemExtent fisso.
   double get _itemHeight => widget.fontSize * widget.lineHeight * 1.6;
 
   @override
@@ -138,7 +120,7 @@ class _VirtualizedLogViewState extends State<VirtualizedLogView> {
   void _onScroll() {
     if (!_verticalCtrl.hasClients) return;
     final pos = _verticalCtrl.position;
-    // Tolleranza dinamica in base alla modalità.
+
     final threshold = widget.wrapLines ? widget.fontSize * 4 : _itemHeight;
     final atBottom = pos.pixels >= pos.maxScrollExtent - threshold;
     if (atBottom != _autoScroll) setState(() => _autoScroll = atBottom);
@@ -179,7 +161,7 @@ class _VirtualizedLogViewState extends State<VirtualizedLogView> {
     Widget listView;
 
     if (widget.wrapLines) {
-      // Altezza variabile: ListView virtualizza ma senza itemExtent fisso.
+
       listView = ListView.builder(
         controller: _verticalCtrl,
         itemCount: lines.length,
@@ -187,7 +169,7 @@ class _VirtualizedLogViewState extends State<VirtualizedLogView> {
         itemBuilder: (_, index) => _buildItem(lines[index]),
       );
     } else {
-      // Altezza fissa: itemExtent → O(1), performance massima.
+
       listView = ListView.builder(
         controller: _verticalCtrl,
         itemExtent: _itemHeight,
@@ -200,10 +182,10 @@ class _VirtualizedLogViewState extends State<VirtualizedLogView> {
     Widget content;
 
     if (widget.wrapLines) {
-      // Solo scroll verticale — niente scroll orizzontale annidato.
+
       content = listView;
     } else {
-      // Scroll orizzontale unico — niente scroll annidati.
+
       content = SingleChildScrollView(
         controller: _horizontalCtrl,
         scrollDirection: Axis.horizontal,

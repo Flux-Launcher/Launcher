@@ -5,60 +5,16 @@ import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:flux_launcher_gui/globals.dart';
 
-/// Manages Modrinth modpack instances under:
-///   .flux/modrinth-packs/<slug>/
-///
-/// Directory layout:
-///   .flux/modrinth-packs/
-///     index.json             ← registry of all installed packs (offline-friendly)
-///     <slug>/
-///       pack.json            ← per-instance metadata (version, deps…)
-///       mods/
-///       config/
-///       saves/
-///       resourcepacks/
-///       shaderpacks/
-///       screenshots/
-///
-/// index.json schema:
-///   {
-///     "packs": [
-///       {
-///         "slug":        "all-of-fabric-6",
-///         "projectId":   "aabbccdd",
-///         "title":       "All of Fabric 6",
-///         "iconUrl":     "https://…",
-///         "versionName": "1.10.0",
-///         "minecraft":   "1.20.1",
-///         "loader":      "fabric",          // "fabric" | "forge" | "quilt" | …
-///         "installedAt": "2025-03-22T…"
-///       },
-///       …
-///     ]
-///   }
 class ModrinthUtils {
-  // ─────────────────────────────────────────
-  //  Paths
-  // ─────────────────────────────────────────
 
-  /// Root directory for all modpack instances.
   static String get packsRoot => '${LauncherUtils.getApplicationFolder("flux")}/modrinth-packs';
 
-  /// Path to the global registry file.
   static String get indexFile => '$packsRoot/index.json';
 
-  /// Directory for a specific modpack instance identified by [slug].
   static String instanceDir(String slug) => '$packsRoot/$slug';
 
-  /// Path to the local metadata file for a modpack instance.
   static String metaFile(String slug) => '${instanceDir(slug)}/pack.json';
 
-  // ─────────────────────────────────────────
-  //  index.json — global registry
-  // ─────────────────────────────────────────
-
-  /// Reads the global index, returning the list of pack entries.
-  /// Returns an empty list if the file doesn't exist or is malformed.
   static List<Map<String, dynamic>> readIndex() {
     final file = File(indexFile);
     if (!file.existsSync()) return [];
@@ -72,7 +28,6 @@ class ModrinthUtils {
     }
   }
 
-  /// Writes the full list of pack entries back to index.json atomically.
   static Future<void> _writeIndex(List<Map<String, dynamic>> packs) async {
     Directory(packsRoot).createSync(recursive: true);
     final file = File(indexFile);
@@ -82,7 +37,6 @@ class ModrinthUtils {
     );
   }
 
-  /// Adds or updates the entry for [slug] in index.json.
   static Future<void> _upsertIndex(Map<String, dynamic> entry) async {
     final packs = readIndex();
     final idx = packs.indexWhere((p) => p['slug'] == entry['slug']);
@@ -94,13 +48,11 @@ class ModrinthUtils {
     await _writeIndex(packs);
   }
 
-  /// Removes the entry for [slug] from index.json.
   static Future<void> _removeFromIndex(String slug) async {
     final packs = readIndex()..removeWhere((p) => p['slug'] == slug);
     await _writeIndex(packs);
   }
 
-  /// Returns the index entry for [slug], or null if not registered.
   static Map<String, dynamic>? getIndexEntry(String slug) {
     return readIndex().cast<Map<String, dynamic>?>().firstWhere(
           (p) => p?['slug'] == slug,
@@ -108,27 +60,19 @@ class ModrinthUtils {
         );
   }
 
-  // ─────────────────────────────────────────
-  //  Instance management
-  // ─────────────────────────────────────────
-
-  /// Returns true if an instance for [slug] already exists on disk.
   static bool instanceExists(String slug) => Directory(instanceDir(slug)).existsSync();
 
-  /// Creates the directory skeleton for a new modpack instance.
   static void _createInstanceDirs(String slug) {
     for (final sub in ['mods', 'config', 'saves', 'resourcepacks', 'shaderpacks', 'screenshots']) {
       Directory('${instanceDir(slug)}/$sub').createSync(recursive: true);
     }
   }
 
-  /// Saves modpack metadata locally so we can display it without re-fetching.
   static Future<void> _writeMeta(String slug, Map<String, dynamic> meta) async {
     final file = File(metaFile(slug));
     await file.writeAsString(json.encode(meta), flush: true);
   }
 
-  /// Reads cached metadata for [slug], or null if not present.
   static Map<String, dynamic>? readMeta(String slug) {
     final file = File(metaFile(slug));
     if (!file.existsSync()) return null;
@@ -139,13 +83,10 @@ class ModrinthUtils {
     }
   }
 
-  /// Returns a list of all installed modpack slugs (from index.json).
-  /// Falls back to directory scanning if index is missing.
   static List<String> installedSlugs() {
     final indexed = readIndex().map((p) => p['slug'].toString()).toList();
     if (indexed.isNotEmpty) return indexed;
 
-    // Fallback: scan filesystem
     final root = Directory(packsRoot);
     if (!root.existsSync()) return [];
 
@@ -153,31 +94,16 @@ class ModrinthUtils {
         .listSync()
         .whereType<Directory>()
         .map((d) => d.path.split(Platform.pathSeparator).last)
-        .where((name) => name != 'index.json') // just in case
+        .where((name) => name != 'index.json')
         .toList();
   }
 
-  /// Deletes the instance directory for [slug] and removes it from index.json.
   static Future<void> removeInstance(String slug) async {
     final dir = Directory(instanceDir(slug));
     if (dir.existsSync()) await dir.delete(recursive: true);
     await _removeFromIndex(slug);
   }
 
-  // ─────────────────────────────────────────
-  //  Download & install
-  // ─────────────────────────────────────────
-
-  /// Full install pipeline:
-  ///   1. Fetch latest version from Modrinth API
-  ///   2. Download the .mrpack archive
-  ///   3. Extract overrides/ into the instance directory
-  ///   4. Download each mod file listed in modrinth.index.json
-  ///   5. Write pack.json metadata
-  ///   6. Register the pack in index.json
-  ///
-  /// [onProgress] receives a value between 0.0 and 1.0.
-  /// [onStatus]   receives a human-readable status string.
   static Future<void> installModpack({
     required String projectId,
     required String slug,
@@ -188,7 +114,6 @@ class ModrinthUtils {
   }) async {
     onStatus?.call('Fetching version info…');
 
-    // 1 ── Fetch latest version metadata
     final versionsRes = await http.get(
       Uri.parse('${Urls.modrinthApiURL}/project/$projectId/version'),
     );
@@ -203,7 +128,6 @@ class ModrinthUtils {
     final versionId = latest['id']?.toString() ?? '';
     final versionName = latest['version_number']?.toString() ?? '';
 
-    // Find the primary .mrpack file
     final files = (latest['files'] as List? ?? []);
     final primaryFile = files.firstWhere(
       (f) => f['primary'] == true,
@@ -214,7 +138,6 @@ class ModrinthUtils {
     final downloadUrl = primaryFile['url']?.toString() ?? '';
     if (downloadUrl.isEmpty) throw Exception('Empty download URL for $versionId');
 
-    // 2 ── Download .mrpack
     onStatus?.call('Downloading $title $versionName…');
     onProgress?.call(0.05);
 
@@ -225,19 +148,16 @@ class ModrinthUtils {
 
     onProgress?.call(0.25);
 
-    // 3 ── Create instance dirs and extract archive
     _createInstanceDirs(slug);
 
     final archive = ZipDecoder().decodeBytes(mrpackRes.bodyBytes);
 
-    // Parse modrinth.index.json first
     final indexEntry = archive.files.firstWhere(
       (f) => f.name == 'modrinth.index.json',
       orElse: () => throw Exception('modrinth.index.json not found in mrpack'),
     );
     final index = json.decode(utf8.decode(indexEntry.content as List<int>)) as Map<String, dynamic>;
 
-    // Extract overrides/ → instance root
     onStatus?.call('Extracting overrides…');
     for (final file in archive.files) {
       if (!file.isFile) continue;
@@ -254,7 +174,6 @@ class ModrinthUtils {
 
     onProgress?.call(0.45);
 
-    // 4 ── Download individual mod files from index
     final modFiles = (index['files'] as List? ?? []);
     final total = modFiles.length;
 
@@ -270,7 +189,6 @@ class ModrinthUtils {
       final dest = File('${instanceDir(slug)}/$modPath');
       dest.parent.createSync(recursive: true);
 
-      // Skip if already present (resume-friendly)
       if (!dest.existsSync()) {
         try {
           final modRes = await http.get(Uri.parse(modUrl));
@@ -285,8 +203,6 @@ class ModrinthUtils {
       onProgress?.call(0.45 + 0.50 * ((i + 1) / total));
     }
 
-    // Derive loader name from dependencies
-    // modrinth.index.json deps example: { "minecraft": "1.20.1", "fabric-loader": "0.15.7" }
     final deps = Map<String, String>.from(
       (index['dependencies'] as Map? ?? {}).map(
         (k, v) => MapEntry(k.toString(), v.toString()),
@@ -295,7 +211,6 @@ class ModrinthUtils {
     final mcVersion = deps['minecraft'] ?? '';
     final loader = _detectLoader(deps);
 
-    // 5 ── Write per-instance pack.json
     final meta = {
       'projectId': projectId,
       'slug': slug,
@@ -310,7 +225,6 @@ class ModrinthUtils {
     };
     await _writeMeta(slug, meta);
 
-    // 6 ── Register in global index.json
     await _upsertIndex({
       'slug': slug,
       'projectId': projectId,
@@ -326,7 +240,6 @@ class ModrinthUtils {
     onStatus?.call('$title installed successfully!');
   }
 
-  /// Detects the mod loader name from a modrinth.index.json dependencies map.
   static String _detectLoader(Map<String, String> deps) {
     if (deps.containsKey('fabric-loader')) return 'fabric';
     if (deps.containsKey('forge')) return 'forge';
@@ -336,19 +249,8 @@ class ModrinthUtils {
     return 'unknown';
   }
 
-  // ─────────────────────────────────────────
-  //  Launch helpers
-  // ─────────────────────────────────────────
-
-  /// Returns the game directory to pass to the Minecraft launcher
-  /// for the modpack identified by [slug].
   static String gameDir(String slug) => instanceDir(slug);
 
-  /// Reads the required mod loader and game version from pack.json.
-  ///
-  /// Returns a map like:
-  ///   { 'minecraft': '1.20.1', 'fabric-loader': '0.15.7' }
-  /// or an empty map if metadata is missing.
   static Map<String, String> getDependencies(String slug) {
     final meta = readMeta(slug);
     if (meta == null) return {};

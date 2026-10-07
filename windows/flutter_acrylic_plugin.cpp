@@ -178,17 +178,14 @@ void FlutterAcrylicPlugin::HandleMethodCall(
     flutter::EncodableMap color = std::get<flutter::EncodableMap>(
         arguments[flutter::EncodableValue("color")]);
     bool dark = std::get<bool>(arguments[flutter::EncodableValue("dark")]);
-    // Set [ACCENT_DISABLED] as [ACCENT_POLICY] in
-    // [SetWindowCompositionAttribute] to apply styles properly.
+
     ACCENT_POLICY accent = {ACCENT_DISABLED, 2, static_cast<DWORD>(0), 0};
     WINDOWCOMPOSITIONATTRIBDATA data;
     data.Attrib = WCA_ACCENT_POLICY;
     data.pvData = &accent;
     data.cbData = sizeof(accent);
     set_window_composition_attribute_(GetParentWindow(), &data);
-    // Only on later Windows 11 versions and if effect is WindowEffect.mica,
-    // WindowEffect.acrylic or WindowEffect.tabbed, otherwise fallback to old
-    // approach.
+
     if (GetWindowsVersion().dwBuildNumber >= 22523 && effect > 3) {
       BOOL enable = TRUE, dark_bool = dark;
       MARGINS margins = {-1};
@@ -200,13 +197,11 @@ void FlutterAcrylicPlugin::HandleMethodCall(
                               sizeof(enable));
     } else {
       if (effect == 5) {
-        // Check for Windows 11.
+
         if (GetWindowsVersion().dwBuildNumber >= 22000) {
           BOOL enable = TRUE, dark_bool = dark;
           MARGINS margins = {-1};
-          // Mica effect requires [DwmExtendFrameIntoClientArea & "sheet of
-          // glass"
-          // effect with negative margins.
+
           ::DwmExtendFrameIntoClientArea(GetParentWindow(), &margins);
           ::DwmSetWindowAttribute(GetParentWindow(), 20, &dark_bool,
                                   sizeof(dark_bool));
@@ -214,19 +209,13 @@ void FlutterAcrylicPlugin::HandleMethodCall(
                                   sizeof(enable));
         }
       } else {
-        // Restore original window style & [DwmExtendFrameIntoClientArea] margin
-        // if the last set effect was [WindowEffect.mica], since it sets
-        // negative margins to the window.
+
         if (GetWindowsVersion().dwBuildNumber >= 22000 &&
                 window_effect_last_ == 5 ||
             (GetWindowsVersion().dwBuildNumber >= 22523 &&
              window_effect_last_ > 3)) {
           BOOL enable = FALSE;
-          // Atleast one margin should be non-negative in order to show the DWM
-          // window shadow created by handling [WM_NCCALCSIZE].
-          //
-          // Matching value with bitsdojo_window.
-          // https://github.com/bitsdojo/bitsdojo_window/blob/adad0cd40be3d3e12df11d864f18a96a2d0fb4fb/bitsdojo_window_windows/windows/bitsdojo_window.cpp#L149
+
           MARGINS margins = {0, 0, 1, 0};
           ::DwmExtendFrameIntoClientArea(GetParentWindow(), &margins);
           ::DwmSetWindowAttribute(GetParentWindow(), 20, &enable,

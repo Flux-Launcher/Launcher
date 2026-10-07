@@ -8,7 +8,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const _keyStorageKey = 'flux_launcher_file_key_v1';
 
-// v4.2.1 — costruttore senza parametri, funziona su win/mac/linux
 const _storage = FlutterSecureStorage();
 
 Future<Uint8List> loadOrCreateFileKey() async {

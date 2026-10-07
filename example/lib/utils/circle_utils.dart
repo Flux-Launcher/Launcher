@@ -23,7 +23,6 @@ class CirclePainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.fill;
 
-    // Disegna il cerchio interno
     canvas.drawCircle(
       Offset(size.width / 2, size.height / 2),
       size.width / 2,
@@ -36,10 +35,8 @@ class CirclePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = outlineWidth;
 
-      // Calcola il raggio del cerchio esterno tenendo conto della distanza
       double outerRadius = size.width / 2 + distance + outlineWidth / 2;
 
-      // Disegna il cerchio esterno
       canvas.drawCircle(
         Offset(size.width / 2, size.height / 2),
         outerRadius,

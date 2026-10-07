@@ -1,6 +1,5 @@
 import 'package:flux_launcher_gui/globals.dart';
 
-/// Mod loader families recognized by the launcher.
 enum ModLoader {
   vanilla,
   fabric,
@@ -11,8 +10,6 @@ enum ModLoader {
   quilt,
 }
 
-/// Result of resolving a version id (and optional metadata) to its loader
-/// and real Minecraft version.
 class LaunchProfile {
   final String minecraftVersion;
   final ModLoader loader;
@@ -20,11 +17,6 @@ class LaunchProfile {
   const LaunchProfile({required this.minecraftVersion, required this.loader});
 }
 
-/// Full description of a launch: what to run and with which loader.
-///
-/// [enableClassPath] is derived on demand from [loader], [realGameVersion]
-/// and the current global/manual overrides, so it always reflects the
-/// latest settings even if they change after this config was built.
 class LaunchConfig {
   final String gameVersion;
   final String? productId;
@@ -33,9 +25,6 @@ class LaunchConfig {
   final ModLoader loader;
   final bool startOnFirstThread;
 
-  /// Unconditionally forces classpath mode, regardless of [loader] or
-  /// version (used by Modrinth modpacks, which always force classpath
-  /// irrespective of their loader).
   final bool forceClassPath;
 
   final List<String> jvmArgs;
@@ -54,8 +43,7 @@ class LaunchConfig {
   });
 
   bool get enableClassPath {
-    // Flux's own dedicated products aren't Minecraft loaders: the
-    // classpath policy doesn't apply to them.
+
     if (productId != null) return false;
     if (forceClassPath) return true;
 
@@ -63,17 +51,8 @@ class LaunchConfig {
   }
 }
 
-/// Decides whether a launch should use classpath (`-c`) or classloader mode.
-///
-/// Policy:
-/// - Vanilla, Fabric and OptiFine: classloader by default, classpath only
-///   when explicitly forced (global setting or manual `-c`).
-/// - Old Forge / OptiForge (below [forgeClasspathBaseline]): same as OptiFine.
-/// - Forge from [forgeClasspathBaseline] onward: classpath is always forced.
-/// - NeoForge and Quilt: classpath is always forced.
 class LaunchPolicy {
-  /// Forge never shipped a build for plain 1.17; it resumed at 1.17.1, which
-  /// is also where Forge switched to requiring classpath mode.
+
   static const String forgeClasspathBaseline = '1.17.1';
 
   static bool resolveEnableClassPathFor(ModLoader loader, String minecraftVersion) {
@@ -93,13 +72,10 @@ class LaunchPolicy {
     }
   }
 
-  /// Whether the user manually typed `-c` into the custom launcher
-  /// arguments field, as a legacy way of forcing classpath mode.
   static bool hasManualClasspathOverride() {
     return Globals.javalaunchercontroller.text.split(' ').contains('-c');
   }
 
-  /// Maps a Modrinth `loader` field to its [ModLoader].
   static ModLoader loaderFromModrinthId(String id) {
     switch (id) {
       case 'fabric':
@@ -115,11 +91,6 @@ class LaunchPolicy {
     }
   }
 
-  /// Detects a loader purely from a self-describing version id, following
-  /// the naming conventions used by each installer (e.g.
-  /// `fabric-loader-<loaderVer>-<mcVer>`, `<mcVer>-forge-<forgeVer>`,
-  /// `neoforge-<neoVer>`). Returns [ModLoader.vanilla] when the id doesn't
-  /// self-describe a loader.
   static ModLoader detectLoaderFromId(String id) {
     final lower = id.toLowerCase();
 
@@ -135,8 +106,6 @@ class LaunchPolicy {
     return ModLoader.vanilla;
   }
 
-  /// Detects a loader from a generic type hint (e.g. UI labels like
-  /// "Forge", "Fabric", already-normalized type strings, ...).
   static ModLoader detectLoaderFromType(String type) {
     final lower = type.toLowerCase();
 
@@ -150,9 +119,6 @@ class LaunchPolicy {
     return ModLoader.vanilla;
   }
 
-  /// Refines loader detection using an installed version profile's
-  /// `libraries` list, the way real Forge/Fabric/Quilt/NeoForge installers
-  /// populate it. Returns `null` when no known loader library is found.
   static ModLoader? detectLoaderFromLibraries(List<dynamic> libraries) {
     for (final entry in libraries) {
       final name = entry is Map ? entry['name']?.toString().toLowerCase() : null;
@@ -167,9 +133,6 @@ class LaunchPolicy {
     return null;
   }
 
-  /// Extracts the real Minecraft version out of a self-describing id for
-  /// the given [loader]. Assumes [id] actually follows that loader's
-  /// naming convention (i.e. [detectLoaderFromId] already matched it).
   static String extractMinecraftVersion(String id, ModLoader loader) {
     switch (loader) {
       case ModLoader.fabric:
@@ -189,9 +152,6 @@ class LaunchPolicy {
   static String _stripLoaderPrefix(String id, String prefix) {
     if (!id.toLowerCase().startsWith(prefix)) return id;
 
-    // Everything after "<loader>-loader-" is "<loaderVersion>-<mcVersion>";
-    // the Minecraft version itself may contain dashes (pre-releases, RCs),
-    // so only the loader version (up to the first dash) is stripped off.
     final remainder = id.substring(prefix.length);
     final separatorIndex = remainder.indexOf('-');
 

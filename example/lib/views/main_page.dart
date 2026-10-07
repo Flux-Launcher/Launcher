@@ -158,11 +158,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  //////////////////////////////////
-  //////////// NAVBAR //////////////
-  //////////////////////////////////
-
-  /** Renderizza la Navbar */
   Widget buildNavbar() {
     return Material(
       elevation: 15,
@@ -188,7 +183,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /** Renderizza le icone della Navbar */
   Widget buildNavItem(IconData icon, NavSection section) {
     final bool selected = Globals.navSelected == section;
 
@@ -285,7 +279,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /** Renderizza la faccia del player */
   Widget buildNavAccountItem(NavSection section) {
     final bool selected = Globals.navSelected == section;
 
@@ -329,14 +322,12 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  ////////// HOME PAGE /////////////
-
   ListView buildHomeWidgetList() {
     return ListView(
       children: [
-        /** Versioni pinnate */
+
         if (Globals.pinnedVersions.isNotEmpty) ...[
-          /** Divider Versioni Preferite */
+
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: TextDivider(
@@ -367,7 +358,7 @@ class _MainPageState extends State<MainPage> {
                   ),
                 ),
           ]),
-          /** Divider News/Changelog mojang */
+
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: TextDivider(
@@ -386,7 +377,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ],
 
-        /** Changelog */
         if (Globals.isNewsAvailable) ...[
           _buildResponsiveTileGrid(
             [
@@ -403,7 +393,7 @@ class _MainPageState extends State<MainPage> {
             minTileWidth: 280,
           ),
         ] else ...[
-          /** quando non può mostrare le news */
+
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
             child: Text(
@@ -456,7 +446,7 @@ class _MainPageState extends State<MainPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /** Miniatura con titolo e data leggibili su gradiente */
+
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
                   child: ClipRRect(
@@ -469,8 +459,7 @@ class _MainPageState extends State<MainPage> {
                           height: 150,
                           fit: BoxFit.cover,
                         ),
-                        // Gradiente in basso invece di un blur uniforme: la
-                        // miniatura resta leggibile e il testo sopra pure.
+
                         Positioned.fill(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
@@ -529,8 +518,6 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  /////////// FLUX /////////////
-
   ListView buildFluxList() {
     return ListView(
       children: [
@@ -568,9 +555,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /// Banner introduttivo sopra la griglia dei prodotti Flux: spiega in
-  /// due righe perché scegliere il client Flux invece di vanilla/mod,
-  /// dato che l'API dei prodotti non fornisce alcuna descrizione.
   Widget _buildFluxHero() {
     return Material(
       elevation: 15,
@@ -615,7 +599,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /// Hero trust badges (privacy, no ads)
   Widget _buildFluxTrustChip(IconData icon, String label) {
     final Color fg = ColorUtils.primaryFontColor;
 
@@ -656,7 +639,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /// Comfortaa sits ~0.07em high in its line box: nudge the label down to center it
   Widget _buildChipLabel(String label, FontWeight weight, {Color color = Colors.white}) {
     return Transform.translate(
       offset: const Offset(0, 0.75),
@@ -696,7 +678,6 @@ class _MainPageState extends State<MainPage> {
               ),
             ),
 
-            /** Badge "In evidenza" */
             Positioned(
               top: 12,
               left: 10,
@@ -711,7 +692,7 @@ class _MainPageState extends State<MainPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Sta sopra l'immagine scura della card: sempre bianco
+
                     const Icon(Icons.star, size: 13, color: Colors.white),
                     const SizedBox(width: 4),
                     Text(
@@ -723,10 +704,6 @@ class _MainPageState extends State<MainPage> {
               ),
             ),
 
-            /** Contenuto: uno spacer riserva l'area "solo immagine" in alto,
-             * poi il pannello info (non posizionato: è lui a determinare
-             * l'altezza finale della card, l'immagine si adatta di conseguenza
-             * grazie al Positioned.fill sopra). */
             Column(
               children: [
                 const SizedBox(height: 118),
@@ -765,7 +742,6 @@ class _MainPageState extends State<MainPage> {
                       ),
                       const SizedBox(width: 10),
 
-                      /** Pulsante Gioca */
                       SizedBox(
                         height: 48,
                         child: ElevatedButton.icon(
@@ -816,12 +792,10 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /////////// VANILLA //////////////
-
   ListView buildVanillaList() {
     return ListView(
       children: [
-        /** Avvisa l'utente che non ha versioni vanilla */
+
         if (VersionUtils.getMinecraftVersions(false).isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
@@ -836,7 +810,6 @@ class _MainPageState extends State<MainPage> {
             ),
           ),
 
-        /** Ultime versioni */
         _buildResponsiveTileGrid([
           buildVanillaItem(
             AppLocalizations.of(context)!.vanilla_release_title,
@@ -851,7 +824,7 @@ class _MainPageState extends State<MainPage> {
             true,
           ),
         ]),
-        /** Separatore */
+
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Divider(
@@ -859,7 +832,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Lista completa delle versioni solo vanilla (misto) */
         _buildResponsiveTileGrid([
           for (var version in VersionUtils.getMinecraftVersions(false))
             if ((version["type"] == "release" && Globals.showOnlyReleases) || !Globals.showOnlyReleases)
@@ -895,7 +867,7 @@ class _MainPageState extends State<MainPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Icona
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Tooltip(
@@ -947,7 +919,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
 
-              // Testo
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -979,7 +950,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
 
-              // Pulsanti
               if (!gameType.contains(AppLocalizations.of(context)!.vanilla_release_title) && !gameType.contains(AppLocalizations.of(context)!.vanilla_snapshot_title))
                 WidgetUtils.buildButton(
                   Globals.pinnedVersions.contains(gameVersion) ? Icons.favorite : Icons.favorite_border,
@@ -1050,34 +1020,24 @@ class _MainPageState extends State<MainPage> {
     return 'assets/release.png';
   }
 
-  /// Costruisce l'id di versione completo (auto-descrittivo per il loader,
-  /// es. "fabric-loader-X-Y", "Y-forge-X") a partire dai cataloghi
-  /// disponibili. La policy classloader/classpath viene poi decisa da
-  /// LaunchConfig.enableClassPath in base al loader risolto da
-  /// VersionUtils.resolveLaunchProfile, non da questo metodo.
   ({String gameVersion, List<String> additionalArgs}) versionResolver(
     String gameType,
     String gameVersion,
     BuildContext context,
   ) {
-    // Latest Release
+
     if (gameType.contains(AppLocalizations.of(context)?.vanilla_release_title as Pattern) || gameVersion.contains("latest")) {
       return (gameVersion: "latest", additionalArgs: const []);
     }
 
-    // Latest Snapshot
     if (gameType.contains(AppLocalizations.of(context)?.vanilla_snapshot_title as Pattern) || gameVersion.contains("snapshot")) {
       return (gameVersion: "snapshot", additionalArgs: const []);
     }
 
-    // NeoForge (already self-describing in the installed list, e.g.
-    // "neoforge-21.1.1"). Must be checked before Forge below, since
-    // "neoforge" also contains the substring "forge".
     if (gameType.toLowerCase().contains("neoforge") || gameVersion.toLowerCase().contains("neoforge")) {
       return (gameVersion: gameVersion, additionalArgs: const []);
     }
 
-    // Fabric
     if (gameType.toLowerCase().contains("fabric") || gameVersion.toLowerCase().contains("fabric")) {
       if (!gameVersion.toLowerCase().startsWith("fabric")) {
         var fabricVersion = Globals.fabricLoaderVersionsResponse[0]["version"];
@@ -1087,7 +1047,6 @@ class _MainPageState extends State<MainPage> {
       return (gameVersion: gameVersion, additionalArgs: const []);
     }
 
-    // OptiFine
     if (gameType.toLowerCase().contains("optifine") || gameVersion.toLowerCase().contains("optifine")) {
       if (gameType.toLowerCase().contains("optifine")) {
         final baseVersion = gameVersion.toLowerCase();
@@ -1102,7 +1061,6 @@ class _MainPageState extends State<MainPage> {
       return (gameVersion: gameVersion, additionalArgs: const []);
     }
 
-    // OptiForge
     if (gameType.toLowerCase().contains("optiforge") || gameVersion.toLowerCase().contains("optiforge")) {
       if (gameType.toLowerCase().contains("optiforge")) {
         final baseVersion = gameVersion.toLowerCase();
@@ -1120,7 +1078,6 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    // Forge
     if (gameType.toLowerCase().contains("forge") || gameVersion.toLowerCase().contains("forge")) {
       if (gameType.toLowerCase().contains("forge")) {
         final baseVersion = gameVersion.toLowerCase();
@@ -1138,13 +1095,10 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    // Vanilla (default)
     return (gameVersion: gameVersion, additionalArgs: const []);
   }
 
-  /////////// MODDING //////////////
-
-  final Set<String> _selectedFilters = {}; // vuoto = tutti visibili
+  final Set<String> _selectedFilters = {};
 
   bool _isVisible(String label) {
     if (_selectedFilters.isEmpty) return true;
@@ -1190,7 +1144,7 @@ class _MainPageState extends State<MainPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header
+
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
             child: Row(
@@ -1222,7 +1176,7 @@ class _MainPageState extends State<MainPage> {
               ],
             ),
           ),
-          // Children
+
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             child: _buildResponsiveTileGrid(children),
@@ -1317,12 +1271,11 @@ class _MainPageState extends State<MainPage> {
           }).toList()
         : [];
 
-    // Loaded from .flux/modrinth-packs/index.json — works fully offline
     final installedModpacks = ModrinthUtils.readIndex();
 
     return ListView(
       children: [
-        // ── Modrinth browser button (online only) ──────────────────────────
+
         if (Globals.isVersionsAvailable) ...[
           _buildDivider(AppLocalizations.of(context)!.modded_modrinth_section_title),
           Padding(
@@ -1372,7 +1325,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ],
 
-        // ── Installed Modrinth modpacks (offline-friendly) ─────────────────
         if (installedModpacks.isNotEmpty) ...[
           _buildDivider(AppLocalizations.of(context)!.modded_modrinth_title),
           _buildResponsiveTileGrid([
@@ -1380,7 +1332,6 @@ class _MainPageState extends State<MainPage> {
           ]),
         ],
 
-        // ── Installed modded versions (Forge/Fabric/etc.) ──────────────────
         if (VersionUtils.getMinecraftVersions(true).isNotEmpty) _buildDivider(AppLocalizations.of(context)!.modded_installed_title),
         if (VersionUtils.getMinecraftVersions(true).isEmpty && !Globals.isVersionsAvailable && installedModpacks.isEmpty)
           Padding(
@@ -1401,7 +1352,6 @@ class _MainPageState extends State<MainPage> {
             ),
         ]),
 
-        // ── Available modloader versions ───────────────────────────────────
         _buildDivider(AppLocalizations.of(context)!.modded_available_versions_title),
         _buildFilterChips(),
         const SizedBox(height: 4),
@@ -1459,8 +1409,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /// Builds a single row for an installed Modrinth modpack.
-  /// Reads all data from index.json — no network needed.
   Widget _buildModrinthPackItem(Map<String, dynamic> pack) {
     final slug = pack['slug']?.toString() ?? '';
     final title = pack['title']?.toString() ?? slug;
@@ -1482,7 +1430,7 @@ class _MainPageState extends State<MainPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Icon
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: ClipRRect(
@@ -1500,7 +1448,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
 
-              // Title + subtitle
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1523,7 +1470,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
 
-              // Delete button
               WidgetUtils.buildButton(
                 Icons.delete_outline,
                 Colors.redAccent,
@@ -1576,7 +1522,6 @@ class _MainPageState extends State<MainPage> {
                 },
               ),
 
-              // Launch button
               WidgetUtils.buildButton(
                 Icons.rocket_launch,
                 ColorUtils.dynamicAccentColor,
@@ -1617,7 +1562,7 @@ class _MainPageState extends State<MainPage> {
                     isModded: modLoader != ModLoader.vanilla,
                     realGameVersion: mcVer,
                     loader: modLoader,
-                    // I modpack Modrinth forzano sempre la classpath, a prescindere dal loader.
+
                     forceClassPath: true,
                     startOnFirstThread: LaunchUtils.shouldUseStartOnFirstThread(mcVer),
                     jvmArgs: [],
@@ -1653,12 +1598,10 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /////////// SETTING //////////////
-
   ListView buildSettingsList() {
     return ListView(
       children: [
-        /** Separatore */
+
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: TextDivider(
@@ -1676,7 +1619,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Setting per la darkmode */
         WidgetUtils.buildSettingSwitchItem(
           AppLocalizations.of(context)!.settings_dark_mode_switch,
           "darkModeTheme",
@@ -1707,7 +1649,6 @@ class _MainPageState extends State<MainPage> {
           },
         ),
 
-        /** Setting per il colore */
         WidgetUtils.buildSettingContainerItem(
           Stack(
             children: [
@@ -1730,7 +1671,7 @@ class _MainPageState extends State<MainPage> {
                       ),
                     ),
                   ),
-                  /** Nome del setting */
+
                   Padding(
                     padding: const EdgeInsets.fromLTRB(0, 0, 10, 0),
                     child: Column(
@@ -1758,7 +1699,7 @@ class _MainPageState extends State<MainPage> {
                       elevation: 15,
                       color: Colors.transparent,
                       shadowColor: Colors.transparent,
-                      // Globals.defaultShadowColor,
+
                       borderRadius: const BorderRadius.all(Radius.circular(10)),
                       child: Row(
                         children: [
@@ -1859,7 +1800,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Setting Tema */
         WidgetUtils.buildSettingContainerItem(
           Stack(
             children: [
@@ -1882,7 +1822,7 @@ class _MainPageState extends State<MainPage> {
                       ),
                     ),
                   ),
-                  /** Nome del setting */
+
                   Padding(
                     padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
                     child: Column(
@@ -2006,7 +1946,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Setting trasparenza per linux */
         if (Platform.isLinux && Globals.selectedWindowTheme == 'Clear') ...[
           WidgetUtils.buildSettingSwitchItem(
             "Disable background tinting",
@@ -2027,7 +1966,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ],
 
-        /** Separatore */
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: TextDivider(
@@ -2045,7 +1983,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Setting per nascondere tutto tranne le release */
         WidgetUtils.buildSettingSwitchItem(
           AppLocalizations.of(context)!.settings_only_release_switch,
           "showOnlyReleases",
@@ -2062,7 +1999,6 @@ class _MainPageState extends State<MainPage> {
           (value) => setState(() => Globals.showOnlyReleases = value),
         ),
 
-        /** Setting per mostrare la console */
         WidgetUtils.buildSettingSwitchItem(
           AppLocalizations.of(context)!.settings_console_switch,
           "showConsole",
@@ -2079,7 +2015,6 @@ class _MainPageState extends State<MainPage> {
           (value) => setState(() => Globals.showConsole = value),
         ),
 
-        /** Setting Java */
         WidgetUtils.buildSettingContainerItem(
           Column(
             children: [
@@ -2103,7 +2038,7 @@ class _MainPageState extends State<MainPage> {
                   padding: const EdgeInsets.fromLTRB(6, 0, 6, 4),
                   child: Column(
                     children: [
-                      /** Java selection */
+
                       WidgetUtils.buildSettingTextItem(
                         Padding(
                           padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -2134,10 +2069,8 @@ class _MainPageState extends State<MainPage> {
                                 () async {
                                   final result = await LauncherUtils.checkJava();
 
-                                  // Titolo fisso localizzato
                                   final title = AppLocalizations.of(context)!.settings_check_java_title;
 
-                                  // Corpo del messaggio
                                   String message;
                                   if (result != null) {
                                     final type = result['type'];
@@ -2145,15 +2078,13 @@ class _MainPageState extends State<MainPage> {
                                     final date = result['releaseDate'];
                                     final lts = result['lts'] == 'true' ? 'LTS' : '';
 
-                                    // Messaggio positivo + info JVM
                                     message =
                                         '${AppLocalizations.of(context)!.settings_check_java_yes}\n\n→ JVM: $type\n→ Versione: $version${date != null && date.isNotEmpty ? '\n→ Data rilascio: $date' : ''}${lts.isNotEmpty ? '\n→ Tipo: $lts' : ''}';
                                   } else {
-                                    // Messaggio negativo
+
                                     message = AppLocalizations.of(context)!.settings_check_java_no;
                                   }
 
-                                  // Mostra dialog
                                   WidgetUtils.showMessageDialog(
                                     context,
                                     title,
@@ -2177,7 +2108,7 @@ class _MainPageState extends State<MainPage> {
                           );
                         },
                       ),
-                      /** Java ram */
+
                       WidgetUtils.buildSettingTextItem(
                         Padding(
                           padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -2205,7 +2136,7 @@ class _MainPageState extends State<MainPage> {
                           );
                         },
                       ),
-                      /** Java VM args */
+
                       WidgetUtils.buildSettingTextItem(
                         Padding(
                           padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -2233,7 +2164,7 @@ class _MainPageState extends State<MainPage> {
                           );
                         },
                       ),
-                      /** Launcher args */
+
                       WidgetUtils.buildSettingTextItem(
                         Padding(
                           padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -2261,7 +2192,7 @@ class _MainPageState extends State<MainPage> {
                           );
                         },
                       ),
-                      /** Modalità classpath */
+
                       WidgetUtils.buildSettingSwitchItem(
                         AppLocalizations.of(context)!.settings_force_classpath,
                         "forceClasspath",
@@ -2285,7 +2216,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Cartella di installazione */
         WidgetUtils.buildSettingContainerItem(
           Column(
             children: [
@@ -2359,11 +2289,10 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /* Tasti vari*/
         WidgetUtils.buildSettingContainerItem(
           Row(
             children: [
-              /** Dati di diagnostica */
+
               WidgetUtils.buildTextButton(
                 ColorUtils.dynamicSecondaryForegroundColor,
                 ColorUtils.primaryFontColor,
@@ -2373,7 +2302,6 @@ class _MainPageState extends State<MainPage> {
                 AppLocalizations.of(context)!.settings_diagnostic_title,
               ),
 
-              /** Apri cartella di gioco */
               WidgetUtils.buildTextButton(
                 ColorUtils.dynamicSecondaryForegroundColor,
                 ColorUtils.primaryFontColor,
@@ -2404,7 +2332,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Separatore */
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: TextDivider(
@@ -2422,10 +2349,9 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /**/
         WidgetUtils.buildSettingContainerItem(
           Row(children: [
-            /** Bottone per pulire la cache */
+
             WidgetUtils.buildTextButton(
               Colors.red.withAlpha(160),
               Colors.white,
@@ -2435,7 +2361,6 @@ class _MainPageState extends State<MainPage> {
               AppLocalizations.of(context)!.settings_clear_cache,
             ),
 
-            /** Bottone per importare gli account */
             WidgetUtils.buildTextButton(
               ColorUtils.dynamicSecondaryForegroundColor,
               Colors.white,
@@ -2465,7 +2390,6 @@ class _MainPageState extends State<MainPage> {
               AppLocalizations.of(context)!.settings_account_import,
             ),
 
-            /** Bottone per esportare gli account */
             WidgetUtils.buildTextButton(
               ColorUtils.dynamicSecondaryForegroundColor,
               Colors.white,
@@ -2496,7 +2420,6 @@ class _MainPageState extends State<MainPage> {
           ]),
         ),
 
-        /** Separatore */
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: Padding(
@@ -2507,7 +2430,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Info */
         Center(
           child: GestureDetector(
             child: Text(
@@ -2529,7 +2451,6 @@ class _MainPageState extends State<MainPage> {
           ),
         ),
 
-        /** Links vari */
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: Row(
@@ -2559,13 +2480,11 @@ class _MainPageState extends State<MainPage> {
     return match != null ? match.group(0)! : 'N/A';
   }
 
-  /////////// ACCOUNT //////////////
-
   Widget _buildAccountsPage() {
     return Row(children: [
       buildNavbar(),
       const SizedBox(width: 8),
-      /** Lista account */
+
       Expanded(
         child: ScrollConfiguration(
           behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
@@ -2576,7 +2495,7 @@ class _MainPageState extends State<MainPage> {
       Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          /** Mostra la skin del player a destra */
+
           if (Globals.getAccount() != null && ThreeDimensionalViewer.objs.isNotEmpty) ...[
             Sp3dRenderer(
               const Size(150, 280),
@@ -2591,7 +2510,6 @@ class _MainPageState extends State<MainPage> {
           ],
           const SizedBox(height: 5),
 
-          /** Pulsante Cambia Skin */
           WidgetUtils.buildButton(
             Icons.brush,
             ColorUtils.dynamicPrimaryForegroundColor,
@@ -2722,17 +2640,16 @@ class _MainPageState extends State<MainPage> {
             },
           ),
 
-          /** Pulsanti add remove */
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              /** Aggiungi Account */
+
               WidgetUtils.buildButton(
                 Icons.add,
                 ColorUtils.dynamicPrimaryForegroundColor,
                 ColorUtils.primaryFontColor,
                 () {
-                  /** Selezione tipo di account */
+
                   WidgetUtils.showPopup(
                     context,
                     AppLocalizations.of(context)!.account_add_button,
@@ -2828,7 +2745,7 @@ class _MainPageState extends State<MainPage> {
                   );
                 },
               ),
-              /** Remove Account */
+
               WidgetUtils.buildButton(
                 Icons.remove,
                 ColorUtils.dynamicPrimaryForegroundColor,
@@ -2863,7 +2780,7 @@ class _MainPageState extends State<MainPage> {
     return ListView(
       children: [
         if (Globals.accounts.isNotEmpty) ...[
-          /** Lista degli account */
+
           _buildResponsiveTileGrid(
             [
               for (var account in Globals.accounts)
@@ -2876,7 +2793,7 @@ class _MainPageState extends State<MainPage> {
             minTileWidth: 280,
           ),
         ] else ...[
-          /** mostra il messaggio quando non ci sono account */
+
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
             child: Text(
@@ -3000,9 +2917,6 @@ class _HoverIconState extends State<HoverIcon> {
 }
 
 class AccountUtils {
-  //////////////////////////////////
-  /////// ACCOUNT MANAGER //////////
-  //////////////////////////////////
 
   static void addSP(
     dynamic context,
@@ -3020,8 +2934,8 @@ class AccountUtils {
           borderRadius: const BorderRadius.all(Radius.circular(8)),
           child: WidgetUtils.buildSettingTextItem(
             null,
-            Colors.white /* Sfondo della textbox */,
-            Colors.black /* Colore del font della textbox */,
+            Colors.white ,
+            Colors.black ,
             "Username",
             Globals.usernamecontroller,
             (value) => null,
@@ -3167,19 +3081,15 @@ class AccountUtils {
               var minecraft = await fetchMinecraftProfile(context, minecraftToken);
 
               if (!minecraft.toString().startsWith("[MC]:")) {
-                // print('ID: ${minecraft['id']}');
-                // print('Name: ${minecraft['name']}');
-                // print('Skins: ${minecraft['skins']}');
-                // print('Capes: ${minecraft['capes']}');
-                // print('Profile actions: ${minecraft['profileActions']}');
+
                 bool slim = minecraft['skins'][0]["variant"].toString().toUpperCase().contains("SLIM");
                 callback(
-                  minecraft['name'], // username
-                  minecraft['id'], // uuid
-                  minecraftToken, // token (gioco)
-                  microsoftRefresh, // token (ms refresh)
-                  true, // premium
-                  slim, // skin type
+                  minecraft['name'],
+                  minecraft['id'],
+                  minecraftToken,
+                  microsoftRefresh,
+                  true,
+                  slim,
                 );
                 saveAccounts();
                 Navigator.pop(context);
