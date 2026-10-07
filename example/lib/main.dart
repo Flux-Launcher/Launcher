@@ -41,8 +41,8 @@ Future<void> main() async {
     await Window.hideWindowControls();
     doWhenWindowReady(() {
       appWindow
-        ..minSize = const Size(640, 480)
-        ..size = const Size(640, 480)
+        ..minSize = const Size(960, 600)
+        ..size = const Size(1180, 720)
         ..alignment = Alignment.center
         ..title = Globals.windowTitle
         ..show();

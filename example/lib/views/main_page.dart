@@ -16,7 +16,7 @@ import 'package:flux_launcher_gui/globals.dart';
 import 'package:flux_launcher_gui/l10n/app_localizations.dart';
 import 'package:flux_launcher_gui/main.dart';
 import 'package:flux_launcher_gui/utils/circle_utils.dart';
-import 'package:flux_launcher_gui/utils/launcher//version_utils.dart';
+import 'package:flux_launcher_gui/utils/launcher/version_utils.dart';
 import 'package:flux_launcher_gui/utils/launcher/launch_utils.dart';
 import 'package:flux_launcher_gui/utils/launcher/modrinth_utils.dart';
 import 'package:flux_launcher_gui/utils/flux_icons_icons.dart';
@@ -109,6 +109,7 @@ class _MainPageState extends State<MainPage> {
 
   Widget _buildPage(Widget child) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         buildNavbar(),
         const SizedBox(width: 8),
@@ -159,50 +160,102 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget buildNavbar() {
+    final bool isPl = Localizations.localeOf(context).languageCode == 'pl';
+
     return Material(
       elevation: 15,
       color: ColorUtils.dynamicPrimaryForegroundColor,
       shadowColor: ColorUtils.defaultShadowColor,
       borderRadius: const BorderRadius.all(Radius.circular(Globals.borderRadius)),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          buildNavItem(Icons.home, NavSection.home),
-          const SizedBox(height: 20),
-          buildNavFluxItem(NavSection.flux),
-          const SizedBox(height: 20),
-          buildNavItem(FluxIcons.vanilla, NavSection.vanilla),
-          buildNavItem(FluxIcons.modded, NavSection.modded),
-          buildNavItem(Icons.settings, NavSection.settings),
-          const SizedBox(height: 20),
-          buildNavAccountItem(NavSection.accounts),
-          const SizedBox(height: 20),
-        ],
+      child: Container(
+        width: 175,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 6, top: 4, bottom: 18),
+              child: Row(
+                children: [
+                  Image.asset('assets/flux.png', width: 28, height: 28),
+                  const SizedBox(width: 10),
+                  Text(
+                    "FLUX",
+                    style: WidgetUtils.customTextStyle(
+                      17,
+                      FontWeight.w700,
+                      ColorUtils.primaryFontColor,
+                    ).copyWith(letterSpacing: 2.0),
+                  ),
+                ],
+              ),
+            ),
+            buildNavItem(Icons.home_rounded, isPl ? "Główna" : "Home", NavSection.home),
+            const SizedBox(height: 6),
+            buildNavFluxItem(NavSection.flux),
+            const SizedBox(height: 6),
+            buildNavItem(FluxIcons.vanilla, "Vanilla", NavSection.vanilla),
+            const SizedBox(height: 6),
+            buildNavItem(FluxIcons.modded, isPl ? "Mody" : "Modded", NavSection.modded),
+            const SizedBox(height: 6),
+            buildNavItem(Icons.settings_rounded, isPl ? "Ustawienia" : "Settings", NavSection.settings),
+            const Spacer(),
+            buildNavAccountItem(NavSection.accounts, isPl ? "Konto" : "Account"),
+          ],
+        ),
       ),
     );
   }
 
-  Widget buildNavItem(IconData icon, NavSection section) {
+  Widget buildNavItem(IconData icon, String title, NavSection section) {
     final bool selected = Globals.navSelected == section;
 
-    return GestureDetector(
-      onTap: () async {
-        setState(() {
-          Globals.navSelected = section;
-        });
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () async {
+          setState(() {
+            Globals.navSelected = section;
+          });
 
-        if (section == NavSection.home) {
-          Globals.pinnedVersions = await VersionUtils.getPinnedVersions();
-        }
-      },
-      child: SizedBox(
-        height: 70,
-        width: 60,
-        child: Icon(
-          icon,
-          size: 30,
-          color: selected ? ColorUtils.primaryFontColor : ColorUtils.primaryFontColor.withAlpha(128),
+          if (section == NavSection.home) {
+            Globals.pinnedVersions = await VersionUtils.getPinnedVersions();
+          }
+        },
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Globals.borderRadius / 2),
+            color: selected
+                ? ColorUtils.dynamicAccentColor.withAlpha(45)
+                : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: selected
+                    ? ColorUtils.primaryFontColor
+                    : ColorUtils.primaryFontColor.withAlpha(140),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: WidgetUtils.customTextStyle(
+                    14,
+                    selected ? FontWeight.w600 : FontWeight.w400,
+                    selected
+                        ? ColorUtils.primaryFontColor
+                        : ColorUtils.primaryFontColor.withAlpha(180),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -211,112 +264,126 @@ class _MainPageState extends State<MainPage> {
   Widget buildNavFluxItem(NavSection section) {
     final bool selected = Globals.navSelected == section;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          Globals.navSelected = section;
-        });
-      },
-      child: MouseRegion(
-        onEnter: (e) => {},
-        child: FutureBuilder<Uint8List>(
-          future: SkinUtils.loadCroppedSkin(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const SizedBox(
-                height: 30,
-                width: 30,
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            return ColorFiltered(
-              colorFilter: selected
-                  ? const ColorFilter.mode(
-                      Colors.transparent,
-                      BlendMode.multiply,
-                    )
-                  : const ColorFilter.matrix(
-                      <double>[
-                        0.2126,
-                        0.7152,
-                        0.0722,
-                        0,
-                        0,
-                        0.2126,
-                        0.7152,
-                        0.0722,
-                        0,
-                        0,
-                        0.2126,
-                        0.7152,
-                        0.0722,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        1,
-                        0,
-                      ],
-                    ),
-              child: Container(
-                height: 30,
-                width: 30,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    filterQuality: FilterQuality.none,
-                    image: AssetImage("assets/flux.png"),
-                    fit: BoxFit.cover,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            Globals.navSelected = section;
+          });
+        },
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Globals.borderRadius / 2),
+            color: selected
+                ? ColorUtils.dynamicAccentColor.withAlpha(45)
+                : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              Image.asset(
+                "assets/flux.png",
+                width: 22,
+                height: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "Flux Lite",
+                  style: WidgetUtils.customTextStyle(
+                    14,
+                    selected ? FontWeight.w600 : FontWeight.w400,
+                    selected
+                        ? ColorUtils.primaryFontColor
+                        : ColorUtils.primaryFontColor.withAlpha(180),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            );
-          },
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget buildNavAccountItem(NavSection section) {
+  Widget buildNavAccountItem(NavSection section, String defaultTitle) {
     final bool selected = Globals.navSelected == section;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          Globals.navSelected = section;
-        });
-      },
-      child: MouseRegion(
-        onEnter: (e) => {},
-        child: FutureBuilder<Uint8List>(
-          future: SkinUtils.loadCroppedSkin(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const SizedBox(
-                height: 35,
-                width: 35,
-                child: CircularProgressIndicator(),
-              );
-            }
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            Globals.navSelected = section;
+          });
+        },
+        child: Container(
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Globals.borderRadius / 2),
+            color: selected
+                ? ColorUtils.dynamicAccentColor.withAlpha(45)
+                : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              FutureBuilder<Uint8List>(
+                future: SkinUtils.loadCroppedSkin(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return Container(
+                      height: 30,
+                      width: 30,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ColorUtils.primaryFontColor.withAlpha(25),
+                      ),
+                      child: Icon(
+                        Icons.person_rounded,
+                        size: 18,
+                        color: ColorUtils.primaryFontColor.withAlpha(150),
+                      ),
+                    );
+                  }
 
-            final croppedBytes = snapshot.data!;
-
-            return Container(
-              height: 35,
-              width: 35,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                image: DecorationImage(
-                  filterQuality: FilterQuality.none,
-                  opacity: selected ? 1 : 0.5,
-                  image: MemoryImage(croppedBytes),
-                  fit: BoxFit.cover,
+                  final croppedBytes = snapshot.data!;
+                  return Container(
+                    height: 30,
+                    width: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(
+                        filterQuality: FilterQuality.none,
+                        opacity: selected ? 1.0 : 0.7,
+                        image: MemoryImage(croppedBytes),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  Globals.usernamecontroller.text.isNotEmpty
+                      ? Globals.usernamecontroller.text
+                      : defaultTitle,
+                  style: WidgetUtils.customTextStyle(
+                    13,
+                    selected ? FontWeight.w600 : FontWeight.w400,
+                    selected
+                        ? ColorUtils.primaryFontColor
+                        : ColorUtils.primaryFontColor.withAlpha(180),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            );
-          },
+            ],
+          ),
         ),
       ),
     );
@@ -2481,8 +2548,10 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildAccountsPage() {
-    return Row(children: [
-      buildNavbar(),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        buildNavbar(),
       const SizedBox(width: 8),
 
       Expanded(
