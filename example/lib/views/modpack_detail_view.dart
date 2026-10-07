@@ -1,0 +1,1211 @@
+import 'dart:convert';
+
+import 'package:archive/archive.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:flux_launcher_gui/globals.dart';
+import 'package:flux_launcher_gui/l10n/app_localizations.dart';
+import 'package:flux_launcher_gui/utils/launcher/launch_utils.dart';
+import 'package:flux_launcher_gui/utils/launcher/modrinth_utils.dart';
+import 'package:flux_launcher_gui/utils/widget_utils.dart';
+
+import '../utils/markdown/flutter_markdown_plus.dart';
+
+class ModpackDetailView extends StatefulWidget {
+  final dynamic modpack;
+
+  const ModpackDetailView({super.key, required this.modpack});
+
+  @override
+  State<ModpackDetailView> createState() => _ModpackDetailViewState();
+}
+
+class _ModpackDetailViewState extends State<ModpackDetailView> {
+  bool _isLoading = true;
+  bool _isLoadingMods = false;
+  dynamic _projectData;
+  dynamic _latestVersion;
+  List<dynamic> _dependencies = [];
+  Map<String, dynamic> _modDetails = {};
+
+  // ── Real total download size (.mrpack + every mod it lists) ───
+  bool _isLoadingSize = false;
+  int? _realTotalSize;
+
+  // ── Install state ──────────────────────────────
+  bool _isInstalled = false;
+  bool _isInstalling = false;
+  double _installProgress = 0.0;
+  String _installStatus = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetails();
+    _checkInstalled();
+  }
+
+  void _checkInstalled() {
+    final slug = widget.modpack["slug"]?.toString() ?? '';
+    if (slug.isNotEmpty) {
+      setState(() => _isInstalled = ModrinthUtils.instanceExists(slug));
+    }
+  }
+
+  Future<void> _fetchDetails() async {
+    final projectId = widget.modpack["project_id"];
+    try {
+      final projectRes = await http.get(Uri.parse("${Urls.modrinthApiURL}/project/$projectId"));
+      final versionsRes = await http.get(Uri.parse("${Urls.modrinthApiURL}/project/$projectId/version"));
+
+      if (projectRes.statusCode == 200 && versionsRes.statusCode == 200) {
+        _projectData = json.decode(utf8.decode(projectRes.bodyBytes));
+        final versions = json.decode(utf8.decode(versionsRes.bodyBytes)) as List;
+        if (versions.isNotEmpty) {
+          _latestVersion = versions.first;
+          _dependencies = _latestVersion["dependencies"] ?? [];
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching modpack details: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+
+    if (_dependencies.isNotEmpty) _fetchModDetails();
+    if (_latestVersion != null) _computeRealSize();
+  }
+
+  /// The Modrinth API only reports the size of the primary file, which for
+  /// a modpack is the .mrpack itself: a small manifest (modrinth.index.json)
+  /// plus overrides, NOT the mod jars it references. Those are downloaded
+  /// separately at install time, so the "size" shown by the API is wildly
+  /// smaller than the actual download. Fetch the (small) .mrpack, sum the
+  /// fileSize of every listed mod, and use that as the real total instead.
+  Future<void> _computeRealSize() async {
+    final files = (_latestVersion["files"] as List? ?? []);
+    if (files.isEmpty) return;
+
+    final primaryFile = files.firstWhere(
+      (f) => f["primary"] == true,
+      orElse: () => files.first,
+    );
+    final downloadUrl = primaryFile["url"]?.toString() ?? '';
+    if (downloadUrl.isEmpty) return;
+
+    if (mounted) setState(() => _isLoadingSize = true);
+    try {
+      final res = await http.get(Uri.parse(downloadUrl));
+      if (res.statusCode != 200) return;
+
+      final archive = ZipDecoder().decodeBytes(res.bodyBytes);
+      final indexEntry = archive.files.firstWhere(
+        (f) => f.name == 'modrinth.index.json',
+        orElse: () => throw Exception('modrinth.index.json not found in mrpack'),
+      );
+      final index = json.decode(utf8.decode(indexEntry.content as List<int>)) as Map<String, dynamic>;
+
+      final modFiles = (index['files'] as List? ?? []);
+      final modsTotal = modFiles.fold<int>(0, (sum, f) => sum + ((f as Map)['fileSize'] as int? ?? 0));
+
+      // The .mrpack itself (overrides + manifest) is also downloaded.
+      final total = modsTotal + res.bodyBytes.length;
+
+      if (mounted) setState(() => _realTotalSize = total);
+    } catch (e) {
+      debugPrint("Error computing real modpack size: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingSize = false);
+    }
+  }
+
+  Future<void> _fetchModDetails() async {
+    if (mounted) setState(() => _isLoadingMods = true);
+    try {
+      final ids = _dependencies.map<String?>((dep) => dep["project_id"]?.toString()).whereType<String>().toSet().toList();
+      if (ids.isEmpty) return;
+
+      final idsParam = Uri.encodeQueryComponent(json.encode(ids));
+      final res = await http.get(Uri.parse("${Urls.modrinthApiURL}/projects?ids=$idsParam"));
+      if (res.statusCode == 200) {
+        final projects = json.decode(res.body) as List;
+        final map = <String, dynamic>{};
+        for (final p in projects) {
+          final id = p["id"]?.toString();
+          if (id != null) map[id] = p;
+        }
+        if (mounted) setState(() => _modDetails = map);
+      }
+    } catch (e) {
+      debugPrint("Error fetching mod details: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingMods = false);
+    }
+  }
+
+  // ── Install / uninstall ────────────────────────
+
+  Future<void> _install() async {
+    final projectId = widget.modpack["project_id"]?.toString() ?? '';
+    final slug = widget.modpack["slug"]?.toString() ?? '';
+    final title = widget.modpack["title"]?.toString() ?? slug;
+    final iconUrl = widget.modpack["icon_url"]?.toString() ?? '';
+
+    if (projectId.isEmpty || slug.isEmpty) return;
+
+    setState(() {
+      _isInstalling = true;
+      _installProgress = 0.0;
+      _installStatus = '';
+    });
+
+    try {
+      await ModrinthUtils.installModpack(
+        projectId: projectId,
+        slug: slug,
+        title: title,
+        iconUrl: iconUrl,
+        onProgress: (p) {
+          if (mounted) setState(() => _installProgress = p);
+        },
+        onStatus: (s) {
+          if (mounted) setState(() => _installStatus = s);
+        },
+      );
+      if (mounted) setState(() => _isInstalled = true);
+    } catch (e) {
+      debugPrint("Install error: $e");
+      if (mounted) {
+        WidgetUtils.showMessageDialog(
+          context,
+          AppLocalizations.of(context)!.generic_error_msg,
+          e.toString(),
+          () => Navigator.pop(context),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isInstalling = false);
+    }
+  }
+
+  void _uninstall() {
+    final slug = widget.modpack["slug"]?.toString() ?? '';
+    final title = widget.modpack["title"]?.toString() ?? slug;
+
+    WidgetUtils.showPopup(
+      context,
+      title,
+      <Widget>[
+        Text(
+          AppLocalizations.of(context)!.modpack_remove_confirmation,
+          style: const TextStyle(
+            fontSize: 14,
+            fontFamily: 'Comfortaa',
+            fontWeight: FontWeight.w500,
+            color: Colors.black,
+          ),
+        ),
+      ],
+      <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            AppLocalizations.of(context)!.generic_cancel,
+            style: const TextStyle(
+              fontSize: 14,
+              fontFamily: 'Comfortaa',
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            await ModrinthUtils.removeInstance(slug);
+            if (mounted) setState(() => _isInstalled = false);
+          },
+          child: Text(
+            AppLocalizations.of(context)!.modpack_remove,
+            style: const TextStyle(
+              fontSize: 14,
+              fontFamily: 'Comfortaa',
+              fontWeight: FontWeight.w700,
+              color: Colors.redAccent,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _launch() async {
+    final slug = widget.modpack["slug"]?.toString() ?? '';
+    if (slug.isEmpty || !_isInstalled) return;
+
+    final dependencies = ModrinthUtils.getDependencies(slug);
+    final indexEntry = ModrinthUtils.getIndexEntry(slug);
+    final minecraftVersion = dependencies['minecraft'] ?? indexEntry?['minecraft']?.toString() ?? '';
+    final loader = indexEntry?['loader']?.toString() ?? '';
+
+    if (minecraftVersion.isEmpty) return;
+
+    String gameVersion;
+    var isModded = true;
+
+    switch (loader) {
+      case 'fabric':
+        final loaderVersion = dependencies['fabric-loader'] ?? '';
+        gameVersion = loaderVersion.isNotEmpty ? 'fabric-loader-$loaderVersion-$minecraftVersion' : minecraftVersion;
+        break;
+      case 'forge':
+        final loaderVersion = dependencies['forge'] ?? '';
+        gameVersion = loaderVersion.isNotEmpty ? '$minecraftVersion-forge-$loaderVersion' : minecraftVersion;
+        break;
+      case 'quilt':
+        final loaderVersion = dependencies['quilt-loader'] ?? '';
+        gameVersion = loaderVersion.isNotEmpty ? 'quilt-loader-$loaderVersion-$minecraftVersion' : minecraftVersion;
+        break;
+      case 'neoforge':
+        final loaderVersion = dependencies['neoforge'] ?? '';
+        gameVersion = loaderVersion.isNotEmpty ? 'neoforge-$loaderVersion' : minecraftVersion;
+        break;
+      default:
+        gameVersion = minecraftVersion;
+        isModded = false;
+    }
+
+    final config = LaunchConfig(
+      gameVersion: gameVersion,
+      productId: null,
+      isModded: isModded,
+      realGameVersion: minecraftVersion,
+      loader: LaunchPolicy.loaderFromModrinthId(loader),
+      // I modpack Modrinth forzano sempre la classpath, a prescindere dal loader.
+      forceClassPath: true,
+      startOnFirstThread: LaunchUtils.shouldUseStartOnFirstThread(minecraftVersion),
+    );
+
+    await LaunchUtils.launchMinecraft(
+      context,
+      config,
+      gameDirectory: ModrinthUtils.gameDir(slug),
+      onAccountRequired: () {
+        Globals.navSelected = NavSection.accounts;
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      },
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  //  Build
+  // ──────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: ColorUtils.dynamicWindowBackgroundColor,
+      body: Column(
+        children: [
+          drawTitleCustomBar(),
+          _buildTopBar(context),
+          Expanded(
+            child: _isLoading ? Center(child: Image.asset('assets/flux-animated.gif', width: 64)) : _buildContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.arrow_back, color: ColorUtils.primaryFontColor),
+              onPressed: () => Navigator.pop(context),
+            ),
+            if (constraints.maxWidth < 950) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.modpack["title"] ?? AppLocalizations.of(context)!.modpack_details_title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: WidgetUtils.customTextStyle(24, FontWeight.w600, ColorUtils.primaryFontColor),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 950) {
+          return _buildDesktopContent();
+        }
+
+        return _buildCompactContent();
+      },
+    );
+  }
+
+  Widget _buildCompactContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(compact: true),
+          const SizedBox(height: 24),
+          _buildStats(),
+          const SizedBox(height: 24),
+          _buildActions(),
+          const SizedBox(height: 24),
+          _buildCompatibilityInfo(),
+          if ((_projectData?["body"] ?? '').toString().trim().isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildDescription(),
+          ],
+          if (_dependencies.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildModList(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1500),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDesktopHero(),
+              const SizedBox(height: 18),
+              Divider(
+                color: ColorUtils.secondaryFontColor.withValues(alpha: 0.14),
+                height: 1,
+              ),
+              const SizedBox(height: 18),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: (_projectData?["body"] ?? '').toString().trim().isNotEmpty ? _buildDescription() : const SizedBox.shrink(),
+                  ),
+                  const SizedBox(width: 24),
+                  SizedBox(width: 310, child: _buildDesktopSidebar()),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopHero() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(Globals.borderRadius)),
+            child: CachedNetworkImage(
+              imageUrl: widget.modpack["icon_url"] ?? "",
+              width: 96,
+              height: 96,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                width: 96,
+                height: 96,
+                color: ColorUtils.dynamicSecondaryForegroundColor,
+              ),
+              errorWidget: (context, url, error) => Container(
+                width: 96,
+                height: 96,
+                color: ColorUtils.dynamicSecondaryForegroundColor,
+                child: Icon(
+                  Icons.apps,
+                  size: 42,
+                  color: ColorUtils.secondaryFontColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.modpack["title"] ?? "",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: WidgetUtils.customTextStyle(
+                    26,
+                    FontWeight.bold,
+                    ColorUtils.primaryFontColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.modpack["description"]?.toString() ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: WidgetUtils.customTextStyle(
+                    14,
+                    FontWeight.w400,
+                    ColorUtils.secondaryFontColor,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  AppLocalizations.of(context)!.modpack_author_by(
+                    widget.modpack["author"] ?? AppLocalizations.of(context)!.modpack_unknown_author,
+                  ),
+                  style: WidgetUtils.customTextStyle(
+                    13,
+                    FontWeight.w400,
+                    ColorUtils.secondaryFontColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.download, size: 16, color: ColorUtils.secondaryFontColor),
+                    const SizedBox(width: 5),
+                    Text(
+                      _formatNumber(widget.modpack["downloads"]),
+                      style: WidgetUtils.customTextStyle(13, FontWeight.w500, ColorUtils.secondaryFontColor),
+                    ),
+                    const SizedBox(width: 14),
+                    Flexible(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: (widget.modpack["categories"] as List? ?? [])
+                            .take(4)
+                            .map<Widget>((category) => _buildTag(
+                                  category.toString(),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: SizedBox(
+              width: 280,
+              child: _buildActions(horizontal: true),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Scheda "Compatibilità" (versioni Minecraft, loader, ambiente
+  /// client/server) + "Tag". Condivisa tra layout desktop e compatto:
+  /// prima viveva solo dentro _buildDesktopSidebar e spariva del tutto
+  /// sotto i 950px, invece di semplicemente restringersi.
+  Widget _buildCompatibilityInfo() {
+    final gameVersions = (_projectData?["game_versions"] as List? ?? []).map((version) => version.toString()).toList().reversed.take(10);
+    final loaders = (_projectData?["loaders"] as List? ?? []).map((loader) => loader.toString());
+    final categories = (widget.modpack["categories"] as List? ?? []).map((category) => category.toString());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSidebarCard(
+          AppLocalizations.of(context)!.modpack_compatibility,
+          [
+            Text(
+              AppLocalizations.of(context)!.modpack_minecraft_java,
+              style: WidgetUtils.customTextStyle(13, FontWeight.w400, ColorUtils.secondaryFontColor),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: gameVersions.map((version) => _buildTag(version)).toList(),
+            ),
+            if (loaders.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                AppLocalizations.of(context)!.modpack_platforms,
+                style: WidgetUtils.customTextStyle(13, FontWeight.w400, ColorUtils.secondaryFontColor),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: loaders.map((loader) => _buildTag(loader, accent: true)).toList(),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Text(
+              AppLocalizations.of(context)!.modpack_supported_environments,
+              style: WidgetUtils.customTextStyle(13, FontWeight.w400, ColorUtils.secondaryFontColor),
+            ),
+            const SizedBox(height: 8),
+            _buildTag(
+              _projectData?["server_side"] == "required"
+                  ? AppLocalizations.of(context)!.modpack_client_server
+                  : AppLocalizations.of(context)!.modpack_client_side,
+            ),
+          ],
+        ),
+        if (categories.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildSidebarCard(
+            AppLocalizations.of(context)!.modpack_tags,
+            [
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: categories.map((category) => _buildTag(category)).toList(),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDesktopSidebar() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildStats(),
+        const SizedBox(height: 16),
+        _buildCompatibilityInfo(),
+        if (_dependencies.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildModList(),
+        ],
+      ],
+    );
+  }
+
+  /// Contenitore standard della vista: stesso stile (Material + ombra) delle
+  /// card del resto del launcher.
+  Widget _buildCard({required Widget child, EdgeInsetsGeometry padding = EdgeInsets.zero, Clip clipBehavior = Clip.none}) {
+    return Material(
+      elevation: 15,
+      color: ColorUtils.dynamicPrimaryForegroundColor,
+      shadowColor: ColorUtils.defaultShadowColor,
+      borderRadius: const BorderRadius.all(Radius.circular(Globals.borderRadius)),
+      clipBehavior: clipBehavior,
+      child: Padding(padding: padding, child: child),
+    );
+  }
+
+  Widget _buildSidebarCard(String title, List<Widget> children) {
+    return _buildCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: WidgetUtils.customTextStyle(17, FontWeight.bold, ColorUtils.primaryFontColor),
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTag(String text, {bool accent = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: accent ? ColorUtils.dynamicAccentColor.withValues(alpha: 0.13) : ColorUtils.dynamicSecondaryForegroundColor,
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+        border: Border.all(
+          color: accent ? ColorUtils.dynamicAccentColor.withValues(alpha: 0.3) : ColorUtils.secondaryFontColor.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: WidgetUtils.customTextStyle(
+          11,
+          FontWeight.w500,
+          accent ? ColorUtils.dynamicAccentColor : ColorUtils.secondaryFontColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActions({bool horizontal = false}) {
+    if (!_isInstalled || _isInstalling) return _buildDownloadButton();
+
+    final launchButton = SizedBox(
+      height: 55,
+      child: ElevatedButton.icon(
+        onPressed: _launch,
+        icon: const Icon(Icons.rocket_launch, size: 22, color: Colors.white),
+        label: Text(
+          horizontal ? AppLocalizations.of(context)!.modpack_launch : AppLocalizations.of(context)!.modpack_launch_button,
+          style: WidgetUtils.customTextStyle(16, FontWeight.bold, Colors.white),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: ColorUtils.dynamicAccentColor,
+          elevation: 0,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(Globals.borderRadius)),
+          ),
+        ),
+      ),
+    );
+
+    if (horizontal) {
+      return Row(
+        children: [
+          Expanded(child: launchButton),
+          const SizedBox(width: 10),
+          _buildDownloadButton(compact: true),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        launchButton,
+        const SizedBox(height: 10),
+        _buildDownloadButton(),
+      ],
+    );
+  }
+
+  Widget _buildHeader({bool compact = false}) {
+    final image = ClipRRect(
+      borderRadius: const BorderRadius.all(Radius.circular(Globals.borderRadius)),
+      child: CachedNetworkImage(
+        imageUrl: widget.modpack["icon_url"] ?? "",
+        width: compact ? 150 : 120,
+        height: compact ? 150 : 120,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(color: Colors.white.withOpacity(0.05)),
+        errorWidget: (context, url, error) => Icon(Icons.apps, size: 60, color: ColorUtils.secondaryFontColor),
+      ),
+    );
+
+    final information = Column(
+      crossAxisAlignment: compact ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.modpack["title"] ?? "",
+          textAlign: compact ? TextAlign.center : TextAlign.start,
+          style: WidgetUtils.customTextStyle(28, FontWeight.bold, ColorUtils.primaryFontColor),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          AppLocalizations.of(context)!.modpack_author_by(
+            widget.modpack["author"] ?? AppLocalizations.of(context)!.modpack_unknown_author,
+          ),
+          textAlign: compact ? TextAlign.center : TextAlign.start,
+          style: WidgetUtils.customTextStyle(16, FontWeight.w400, ColorUtils.secondaryFontColor),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          alignment: compact ? WrapAlignment.center : WrapAlignment.start,
+          spacing: 8,
+          runSpacing: 8,
+          children: (widget.modpack["categories"] as List? ?? []).map<Widget>((cat) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: ColorUtils.dynamicAccentColor.withOpacity(0.1),
+                borderRadius: const BorderRadius.all(Radius.circular(20)),
+                border: Border.all(color: ColorUtils.dynamicAccentColor.withOpacity(0.3)),
+              ),
+              child: Text(cat.toString().toUpperCase(), style: WidgetUtils.customTextStyle(10, FontWeight.bold, ColorUtils.dynamicAccentColor)),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+
+    if (compact) {
+      return SizedBox(
+        width: double.infinity,
+        child: _buildCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              image,
+              const SizedBox(height: 18),
+              information,
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        image,
+        const SizedBox(width: 20),
+        Expanded(child: information),
+      ],
+    );
+  }
+
+  Widget _buildStats() {
+    return _buildCard(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+      child: Row(
+        children: [
+          _buildStatItem(Icons.download, AppLocalizations.of(context)!.modpack_stats_downloads, _formatNumber(widget.modpack["downloads"])),
+          _buildStatItem(Icons.update, AppLocalizations.of(context)!.modpack_stats_updated, _formatDate(widget.modpack["date_modified"])),
+          _buildStatItem(
+            Icons.sd_storage,
+            AppLocalizations.of(context)!.modpack_stats_size,
+            _isLoadingSize ? "…" : _formatSize(_realTotalSize ?? _getFileSize()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(IconData icon, String label, String value) {
+    // Expanded + FittedBox: nella sidebar desktop (310px) le tre colonne
+    // devono restringersi invece di andare in overflow.
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: ColorUtils.dynamicAccentColor, size: 24),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label.toUpperCase(), style: WidgetUtils.customTextStyle(10, FontWeight.w500, ColorUtils.secondaryFontColor)),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: WidgetUtils.customTextStyle(16, FontWeight.w600, ColorUtils.primaryFontColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Three states: installing (progress bar) → installed (Remove) → not installed (Download).
+  Widget _buildDownloadButton({bool compact = false}) {
+    // ── Installing ─────────────────────────────────────────────────────────
+    if (_isInstalling) {
+      return _buildCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    _installStatus,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: WidgetUtils.customTextStyle(13, FontWeight.w400, ColorUtils.secondaryFontColor),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${(_installProgress * 100).toInt()}%',
+                  style: WidgetUtils.customTextStyle(13, FontWeight.w600, ColorUtils.primaryFontColor),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(8)),
+              child: LinearProgressIndicator(
+                value: _installProgress,
+                minHeight: 8,
+                backgroundColor: ColorUtils.dynamicSecondaryForegroundColor,
+                valueColor: AlwaysStoppedAnimation<Color>(ColorUtils.dynamicAccentColor),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Already installed ──────────────────────────────────────────────────
+    if (_isInstalled) {
+      if (compact) {
+        return SizedBox.square(
+          dimension: 55,
+          child: Tooltip(
+            message: AppLocalizations.of(context)!.modpack_remove_button,
+            child: GestureDetector(
+              onTap: _uninstall,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(Globals.borderRadius),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    size: 22,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      return SizedBox(
+        width: double.infinity,
+        height: 55,
+        child: ElevatedButton.icon(
+          onPressed: _uninstall,
+          icon: const Icon(Icons.delete_outline, size: 22, color: Colors.white),
+          label: Text(
+            AppLocalizations.of(context)!.modpack_remove_button,
+            style: WidgetUtils.customTextStyle(16, FontWeight.bold, Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.redAccent,
+            elevation: 0,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(Globals.borderRadius)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Not installed ──────────────────────────────────────────────────────
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton.icon(
+        onPressed: _install,
+        icon: const Icon(Icons.download, size: 22, color: Colors.white),
+        label: Text(
+          AppLocalizations.of(context)!.modpack_download_button,
+          style: WidgetUtils.customTextStyle(16, FontWeight.bold, Colors.white),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: ColorUtils.dynamicAccentColor,
+          elevation: 0,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(Globals.borderRadius)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  //  Description with collapsible <details> support
+  // ──────────────────────────────────────────────
+
+  Widget _buildDescription() {
+    final body = (_projectData?["body"] ?? '').toString().trim();
+    if (body.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(AppLocalizations.of(context)!.modpack_description_title, style: WidgetUtils.customTextStyle(20, FontWeight.bold, ColorUtils.primaryFontColor)),
+        const SizedBox(height: 16),
+        _buildCard(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _parseDescriptionSegments(body),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Splits raw markdown/HTML into plain-markdown segments and `<details>` blocks,
+  /// returning a list of ready-to-render widgets.
+  List<Widget> _parseDescriptionSegments(String content) {
+    final widgets = <Widget>[];
+    final detailsRe = RegExp(r'<details>(.*?)</details>', dotAll: true);
+    final summaryRe = RegExp(r'<summary>(.*?)</summary>', dotAll: true);
+
+    int cursor = 0;
+    for (final match in detailsRe.allMatches(content)) {
+      if (match.start > cursor) {
+        final before = content.substring(cursor, match.start).trim();
+        if (before.isNotEmpty) widgets.add(_markdownWidget(before));
+      }
+
+      final inner = match.group(1)!;
+      final summaryMatch = summaryRe.firstMatch(inner);
+      final summaryTitle = summaryMatch?.group(1)?.trim() ?? '';
+      final body = inner.replaceFirst(summaryRe, '').trim();
+
+      widgets.add(_buildDetailsSection(summaryTitle, body));
+      cursor = match.end;
+    }
+
+    if (cursor < content.length) {
+      final tail = content.substring(cursor).trim();
+      if (tail.isNotEmpty) widgets.add(_markdownWidget(tail));
+    }
+
+    return widgets;
+  }
+
+  /// Renders a `<details>` block as a styled, collapsible [ExpansionTile].
+  Widget _buildDetailsSection(String title, String body) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 6),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(Radius.circular(10)),
+        child: Container(
+          decoration: BoxDecoration(
+            color: ColorUtils.dynamicSecondaryForegroundColor.withOpacity(0.25),
+            borderRadius: const BorderRadius.all(Radius.circular(10)),
+            border: Border.all(color: ColorUtils.dynamicAccentColor.withOpacity(0.18), width: 1),
+          ),
+          child: Theme(
+            // Remove the default ExpansionTile divider lines.
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+              childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              iconColor: ColorUtils.dynamicAccentColor,
+              collapsedIconColor: ColorUtils.secondaryFontColor.withOpacity(0.6),
+              // Custom leading chevron; suppress default trailing arrow.
+              leading: Icon(Icons.chevron_right, size: 18, color: ColorUtils.dynamicAccentColor.withOpacity(0.7)),
+              trailing: const SizedBox.shrink(),
+              title: Text(
+                title,
+                style: WidgetUtils.customTextStyle(14, FontWeight.w600, ColorUtils.dynamicAccentColor),
+              ),
+              children: [
+                Divider(color: ColorUtils.dynamicAccentColor.withOpacity(0.15), height: 1, thickness: 1),
+                const SizedBox(height: 10),
+                _markdownWidget(body),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shared markdown renderer used for both plain content and details bodies.
+  Widget _markdownWidget(String data) {
+    return MarkdownBody(
+      data: data,
+      selectable: true,
+      styleSheet: MarkdownStyleSheet(
+        p: WidgetUtils.customTextStyle(15, FontWeight.w300, ColorUtils.secondaryFontColor.withOpacity(0.9)),
+        h1: WidgetUtils.customTextStyle(22, FontWeight.bold, ColorUtils.primaryFontColor),
+        h2: WidgetUtils.customTextStyle(20, FontWeight.bold, ColorUtils.primaryFontColor),
+        h3: WidgetUtils.customTextStyle(18, FontWeight.bold, ColorUtils.primaryFontColor),
+        h4: WidgetUtils.customTextStyle(16, FontWeight.w600, ColorUtils.primaryFontColor),
+        code: WidgetUtils.customTextStyle(14, FontWeight.w400, ColorUtils.primaryFontColor).copyWith(backgroundColor: Colors.black26),
+        listBullet: WidgetUtils.customTextStyle(15, FontWeight.w300, ColorUtils.secondaryFontColor),
+        blockquote: WidgetUtils.customTextStyle(14, FontWeight.w400, ColorUtils.primaryFontColor),
+        blockquotePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        blockquoteDecoration: BoxDecoration(
+          color: ColorUtils.dynamicSecondaryForegroundColor.withOpacity(0.25),
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
+          border: Border(left: BorderSide(color: ColorUtils.dynamicAccentColor, width: 4)),
+        ),
+        a: WidgetUtils.customTextStyle(15, FontWeight.w500, ColorUtils.primaryFontColor.withOpacity(0.5)),
+        tableHead: WidgetUtils.customTextStyle(13, FontWeight.bold, ColorUtils.primaryFontColor),
+        tableBody: WidgetUtils.customTextStyle(13, FontWeight.w300, ColorUtils.secondaryFontColor),
+        tableHeadAlign: TextAlign.center,
+        tableBorder: TableBorder.all(color: Colors.white.withOpacity(0.1), width: 1),
+        tableColumnWidth: const FlexColumnWidth(),
+        tableCellsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        codeblockDecoration: BoxDecoration(
+          color: ColorUtils.dynamicSecondaryForegroundColor,
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
+        ),
+        codeblockPadding: const EdgeInsets.all(12),
+        tableCellsDecoration: BoxDecoration(color: ColorUtils.dynamicSecondaryForegroundColor),
+        tableHeadCellsDecoration: BoxDecoration(color: ColorUtils.dynamicSecondaryForegroundColor.withOpacity(0.5)),
+      ),
+    );
+  }
+
+  Widget _buildModList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(AppLocalizations.of(context)!.modpack_mod_list_title, style: WidgetUtils.customTextStyle(20, FontWeight.bold, ColorUtils.primaryFontColor)),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: ColorUtils.dynamicAccentColor.withOpacity(0.15),
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+              ),
+              child: Text("${_dependencies.length}", style: WidgetUtils.customTextStyle(12, FontWeight.bold, ColorUtils.dynamicAccentColor)),
+            ),
+            if (_isLoadingMods) ...[
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: ColorUtils.dynamicAccentColor),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildCard(
+          clipBehavior: Clip.antiAlias,
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _dependencies.length,
+            separatorBuilder: (context, index) => Divider(color: ColorUtils.secondaryFontColor.withValues(alpha: 0.12), height: 1),
+            itemBuilder: (context, index) => _buildModItem(_dependencies[index]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModItem(dynamic dep) {
+    final projectId = dep["project_id"]?.toString();
+    final modData = projectId != null ? _modDetails[projectId] : null;
+    final title = modData?["title"]?.toString() ?? AppLocalizations.of(context)!.modpack_unknown_mod;
+    final iconUrl = modData?["icon_url"]?.toString();
+    final depType = (dep["dependency_type"] ?? "").toString().toUpperCase();
+
+    Color depColor;
+    switch (dep["dependency_type"]?.toString()) {
+      case "required":
+        depColor = Colors.greenAccent;
+        break;
+      case "optional":
+        depColor = Colors.orangeAccent;
+        break;
+      case "incompatible":
+        depColor = Colors.redAccent;
+        break;
+      default:
+        depColor = ColorUtils.secondaryFontColor;
+    }
+
+    return ListTile(
+      dense: true,
+      leading: ClipRRect(
+        borderRadius: const BorderRadius.all(Radius.circular(6)),
+        child: iconUrl != null && iconUrl.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: iconUrl,
+                width: 36,
+                height: 36,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => _modIconPlaceholder(),
+                errorWidget: (context, url, error) => _modIconPlaceholder(),
+              )
+            : _modIconPlaceholder(),
+      ),
+      title: Text(title, style: WidgetUtils.customTextStyle(14, FontWeight.w500, ColorUtils.primaryFontColor)),
+      subtitle: Text(depType, style: WidgetUtils.customTextStyle(11, FontWeight.w300, depColor)),
+      trailing: Icon(
+        dep["dependency_type"] == "required" ? Icons.check_circle_outline : Icons.info_outline,
+        color: depColor.withOpacity(0.7),
+        size: 16,
+      ),
+    );
+  }
+
+  Widget _modIconPlaceholder() {
+    return Container(
+      width: 36,
+      height: 36,
+      color: ColorUtils.dynamicSecondaryForegroundColor,
+      child: Icon(Icons.extension_outlined, size: 20, color: ColorUtils.secondaryFontColor),
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  //  Helpers
+  // ──────────────────────────────────────────────
+
+  int _getFileSize() {
+    if (_latestVersion != null && _latestVersion["files"] != null && (_latestVersion["files"] as List).isNotEmpty) {
+      return _latestVersion["files"][0]["size"] ?? 0;
+    }
+
+    return 0;
+  }
+
+  String _formatNumber(dynamic number) {
+    if (number == null) return "0";
+    if (number is int) {
+      if (number >= 1000000) return "${(number / 1000000).toStringAsFixed(1)}M";
+      if (number >= 1000) return "${(number / 1000).toStringAsFixed(1)}K";
+
+      return number.toString();
+    }
+
+    return number.toString();
+  }
+
+  String _formatDate(dynamic date) {
+    if (date == null) return "N/A";
+    try {
+      final dt = DateTime.parse(date.toString());
+
+      return "${dt.day}/${dt.month}/${dt.year}";
+    } catch (e) {
+      return "N/A";
+    }
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes <= 0) return "N/A";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    var idx = 0;
+    double size = bytes.toDouble();
+    while (size >= 1024 && idx < units.length - 1) {
+      size /= 1024;
+      idx++;
+    }
+
+    return "${size.toStringAsFixed(1)} ${units[idx]}";
+  }
+}
