@@ -101,6 +101,8 @@ class Urls {
   // Vari
   static const skinURL = "https://minepic.org";
   static const fluxBaseURL = "https://fluxlauncher.xyz";
+  static const discordURL = "https://dc.fluxlauncher.xyz";
+  static const githubURL = "https://github.com/Flux-Launcher";
   static const fabricApiURL = "https://meta.fabricmc.net/";
   static const forgeVersionsURL = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
   static const optifineVersionsURL = "$fluxBaseURL/downloads/optifine.json";

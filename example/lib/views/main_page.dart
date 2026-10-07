@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:http/http.dart' as http;
 import 'package:flux_launcher_gui/account/account_utils.dart';
 import 'package:flux_launcher_gui/account/microsoft_auth.dart';
 import 'package:flux_launcher_gui/globals.dart';
@@ -2537,11 +2536,8 @@ class _MainPageState extends State<MainPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               linkIcon(FluxIcons.globe, Urls.fluxBaseURL),
-              linkIcon(FluxIcons.discord, 'https://discord.gg/RJHaxU4Jt'),
-              linkIcon(
-                FluxIcons.github_mark,
-                'https://github.com/FluxLauncher',
-              ),
+              linkIcon(FluxIcons.discord, Urls.discordURL),
+              linkIcon(FluxIcons.github_mark, Urls.githubURL),
             ],
           ),
         ),
