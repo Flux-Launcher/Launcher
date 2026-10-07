@@ -7,5 +7,5 @@
 ## Ecosystem Repositories
 - **Launcher:** [Flux-Launcher/Launcher](https://github.com/Flux-Launcher/Launcher)
 - **Updater:** [Flux-Launcher/Updater](https://github.com/Flux-Launcher/Updater)
-- **Java Engine*:** [Flux-Launcher/Java-Engine](https://github.com/Flux-Launcher/Java-Engine)
-- **Website*:** [Flux-Launcher/Flux-Launcher.github.io](https://github.com/Flux-Launcher/Flux-Launcher.github.io)
+- **Java Engine:** [Flux-Launcher/Java-Engine](https://github.com/Flux-Launcher/Java-Engine)
+- **Website:** [Flux-Launcher/Flux-Launcher.github.io](https://github.com/Flux-Launcher/Flux-Launcher.github.io)
