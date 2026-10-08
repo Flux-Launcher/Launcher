@@ -361,7 +361,6 @@ class VersionUtils {
     return LaunchProfile(minecraftVersion: resolvedVersion, loader: loader);
   }
 
-
   static Future<void> fetchIncompatibleVersions() async {
     const url = '${Urls.fluxBaseURL}/downloads/known-incompatible.json';
     final response = await http.get(Uri.parse(url));

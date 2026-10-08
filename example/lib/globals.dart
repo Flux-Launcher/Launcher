@@ -438,22 +438,6 @@ class LauncherUtils {
   }
 }
 
-class FluxProduct {
-  final String id;
-  final String name;
-  final String gameversion;
-
-  FluxProduct({required this.id, required this.name, required this.gameversion});
-
-  factory FluxProduct.fromJson(Map<String, dynamic> json) {
-    return FluxProduct(
-      id: json['id'],
-      name: json['name'],
-      gameversion: json['gameversion'],
-    );
-  }
-}
-
 class News {
   String title;
   String type;

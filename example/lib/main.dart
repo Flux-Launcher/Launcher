@@ -161,7 +161,6 @@ class MyAppBodyState extends State<MyAppBody> {
           print(e);
         }
       })(),
-
       (() async {
         try {
           await VersionUtils.getVersions();
@@ -261,11 +260,7 @@ WindowEffect getWindowEffect() {
 }
 
 String getDefaultTheme() {
-  if (Platform.isWindows || Platform.isMacOS) {
-    return "Acrylic";
-  }
-
-  return "Clear";
+  return "Acrylic";
 }
 
 int? getBuildNumber(String version) {

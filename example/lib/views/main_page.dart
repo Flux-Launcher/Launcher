@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' show ImageFilter;
 
+import 'dart:ui';
+import 'package:flutter/gestures.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -43,6 +43,10 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   late final ValueNotifier<String?> _themeNotifier = ValueNotifier(Globals.selectedWindowTheme);
+  final ScrollController _homeScrollController = ScrollController();
+  final ScrollController _vanillaScrollController = ScrollController();
+  final ScrollController _moddedScrollController = ScrollController();
+  final ScrollController _settingsScrollController = ScrollController();
 
   @override
   void initState() {
@@ -53,6 +57,10 @@ class _MainPageState extends State<MainPage> {
   @override
   void dispose() {
     _themeNotifier.dispose();
+    _homeScrollController.dispose();
+    _vanillaScrollController.dispose();
+    _moddedScrollController.dispose();
+    _settingsScrollController.dispose();
     super.dispose();
   }
 
@@ -93,6 +101,52 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildContent(BuildContext context) {
+    Widget pageChild;
+    switch (Globals.navSelected) {
+      case NavSection.home:
+        pageChild = KeyedSubtree(
+          key: const ValueKey(NavSection.home),
+          child: SmoothScrollWrapper(
+            controller: _homeScrollController,
+            child: buildHomeWidgetList(),
+          ),
+        );
+        break;
+      case NavSection.vanilla:
+        pageChild = KeyedSubtree(
+          key: const ValueKey(NavSection.vanilla),
+          child: SmoothScrollWrapper(
+            controller: _vanillaScrollController,
+            child: buildVanillaList(),
+          ),
+        );
+        break;
+      case NavSection.modded:
+        pageChild = KeyedSubtree(
+          key: const ValueKey(NavSection.modded),
+          child: SmoothScrollWrapper(
+            controller: _moddedScrollController,
+            child: buildModdedList(),
+          ),
+        );
+        break;
+      case NavSection.settings:
+        pageChild = KeyedSubtree(
+          key: const ValueKey(NavSection.settings),
+          child: SmoothScrollWrapper(
+            controller: _settingsScrollController,
+            child: buildSettingsList(),
+          ),
+        );
+        break;
+      case NavSection.accounts:
+        pageChild = KeyedSubtree(
+          key: const ValueKey(NavSection.accounts),
+          child: _buildAccountsPage(),
+        );
+        break;
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -100,9 +154,9 @@ class _MainPageState extends State<MainPage> {
         const SizedBox(width: 8),
         Expanded(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            reverseDuration: const Duration(milliseconds: 160),
-            switchInCurve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 280),
+            reverseDuration: const Duration(milliseconds: 200),
+            switchInCurve: Curves.easeOutBack,
             switchOutCurve: Curves.easeInCubic,
             layoutBuilder: (currentChild, previousChildren) {
               return Stack(
@@ -113,64 +167,49 @@ class _MainPageState extends State<MainPage> {
                 ],
               );
             },
-            transitionBuilder: (child, animation) {
+            transitionBuilder: (Widget animChild, Animation<double> animation) {
+              final isForward = animation.status == AnimationStatus.forward || animation.status == AnimationStatus.completed;
+
+              final scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: isForward ? Curves.easeOutBack : Curves.easeInCubic,
+                ),
+              );
+
+              final blurAnim = Tween<double>(begin: 6.0, end: 0.0).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOut,
+                ),
+              );
+
               return AnimatedBuilder(
                 animation: animation,
                 builder: (context, child) {
-                  final progress = animation.value;
-                  final scale = 0.85 + 0.15 * progress;
-                  final blur = (1.0 - progress) * 8.0;
-                  final opacity = progress.clamp(0.0, 1.0);
-
-                  Widget res = Opacity(
-                    opacity: opacity,
-                    child: Transform.scale(
-                      scale: scale,
-                      alignment: Alignment.center,
-                      child: child,
+                  final blurVal = blurAnim.value;
+                  return ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: blurVal, sigmaY: blurVal),
+                    child: FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: scaleAnim,
+                        child: child,
+                      ),
                     ),
                   );
-
-                  if (blur > 0.08) {
-                    res = ImageFiltered(
-                      imageFilter: ImageFilter.blur(
-                        sigmaX: blur * 1.5,
-                        sigmaY: blur * 0.4,
-                      ),
-                      child: res,
-                    );
-                  }
-
-                  return res;
                 },
-                child: child,
+                child: ScrollConfiguration(
+                  behavior: const SmoothScrollBehavior(),
+                  child: animChild,
+                ),
               );
             },
-            child: KeyedSubtree(
-              key: ValueKey(Globals.navSelected),
-              child: SmoothScrollWrapper(
-                child: _getTabContent(Globals.navSelected),
-              ),
-            ),
+            child: pageChild,
           ),
         ),
       ],
     );
-  }
-
-  Widget _getTabContent(NavSection section) {
-    switch (section) {
-      case NavSection.home:
-        return buildHomeWidgetList();
-      case NavSection.vanilla:
-        return buildVanillaList();
-      case NavSection.modded:
-        return buildModdedList();
-      case NavSection.settings:
-        return buildSettingsList();
-      case NavSection.accounts:
-        return _buildAccountsContent();
-    }
   }
 
   Widget _buildResponsiveTileGrid(
@@ -389,8 +428,10 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  ListView buildHomeWidgetList() {
+  Widget buildHomeWidgetList() {
     return ListView(
+      controller: _homeScrollController,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       children: [
 
         if (Globals.pinnedVersions.isNotEmpty) ...[
@@ -585,8 +626,10 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  ListView buildVanillaList() {
+  Widget buildVanillaList() {
     return ListView(
+      controller: _vanillaScrollController,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       children: [
 
         if (VersionUtils.getMinecraftVersions(false).isEmpty)
@@ -1067,6 +1110,8 @@ class _MainPageState extends State<MainPage> {
     final installedModpacks = ModrinthUtils.readIndex();
 
     return ListView(
+      controller: _moddedScrollController,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       children: [
 
         if (Globals.isVersionsAvailable) ...[
@@ -1391,8 +1436,10 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  ListView buildSettingsList() {
+  Widget buildSettingsList() {
     return ListView(
+      controller: _settingsScrollController,
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       children: [
 
         Padding(
@@ -2273,14 +2320,17 @@ class _MainPageState extends State<MainPage> {
     return match != null ? match.group(0)! : 'N/A';
   }
 
-  Widget _buildAccountsContent() {
+  Widget _buildAccountsPage() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: buildAccountList(),
+          child: ScrollConfiguration(
+            behavior: const SmoothScrollBehavior(),
+            child: buildAccountList(),
+          ),
         ),
-        const SizedBox(width: 10),
+      const SizedBox(width: 10),
       Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -2913,57 +2963,50 @@ class AccountUtils {
   }
 }
 
-class SmoothScrollWrapper extends StatefulWidget {
-  final Widget child;
-  const SmoothScrollWrapper({super.key, required this.child});
+class SmoothScrollBehavior extends MaterialScrollBehavior {
+  const SmoothScrollBehavior();
 
   @override
-  State<SmoothScrollWrapper> createState() => _SmoothScrollWrapperState();
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+  }
 }
 
-class _SmoothScrollWrapperState extends State<SmoothScrollWrapper> {
-  final ScrollController _scrollController = ScrollController();
-  double _scrollTarget = 0.0;
+class SmoothScrollWrapper extends StatelessWidget {
+  final Widget child;
+  final ScrollController? controller;
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _handlePointerSignal(PointerSignalEvent event) {
-    if (event is PointerScrollEvent && _scrollController.hasClients) {
-      GestureBinding.instance.pointerSignalResolver.register(event, (PointerSignalEvent e) {
-        final pos = _scrollController.position;
-        if (!pos.hasContentDimensions) return;
-        final delta = (e as PointerScrollEvent).scrollDelta.dy;
-        if (_scrollTarget < pos.minScrollExtent || _scrollTarget > pos.maxScrollExtent) {
-          _scrollTarget = _scrollController.offset;
-        }
-        _scrollTarget = (_scrollTarget + delta * 1.6).clamp(pos.minScrollExtent, pos.maxScrollExtent);
-        _scrollController.animateTo(
-          _scrollTarget,
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOutCubic,
-        );
-      });
-    }
-  }
+  const SmoothScrollWrapper({
+    super.key,
+    required this.child,
+    this.controller,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Listener(
-      onPointerSignal: _handlePointerSignal,
-      child: PrimaryScrollController(
-        controller: _scrollController,
-        child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(
-            scrollbars: false,
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          ),
-          child: widget.child,
-        ),
-      ),
+      onPointerSignal: (pointerSignal) {
+        if (pointerSignal is PointerScrollEvent) {
+          final scrollController = controller ?? PrimaryScrollController.maybeOf(context);
+          if (scrollController != null && scrollController.hasClients) {
+            final target = (scrollController.offset + pointerSignal.scrollDelta.dy * 1.5).clamp(
+              0.0,
+              scrollController.position.maxScrollExtent,
+            );
+            scrollController.animateTo(
+              target,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+            );
+          }
+        }
+      },
+      child: child,
     );
   }
 }
