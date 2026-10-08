@@ -127,17 +127,17 @@ class ColorUtils {
 
   static late Hct dynamicBackgroundMaterialHct;
 
-  static Color get dynamicMaterialColor => Globals.darkModeTheme ? Color(dynamicBackgroundMaterialHct.toInt()) : const Color(0xFFF0F0F5);
+  static Color get dynamicMaterialColor => Globals.darkModeTheme ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
 
   static Color get dynamicAcrylicColor {
     if (Platform.isMacOS) {
-      return Globals.darkModeTheme ? Colors.black.withAlpha(40) : Colors.white.withAlpha(60);
+      return Globals.darkModeTheme ? const Color(0x28FFFFFF) : const Color(0x18000000);
     }
 
-    return Globals.darkModeTheme ? Colors.black.withAlpha(60) : Colors.white.withAlpha(80);
+    return Globals.darkModeTheme ? const Color(0x24FFFFFF) : const Color(0x14000000);
   }
 
-  static Color get dynamicBackgroundColor => isMaterial ? dynamicMaterialColor : dynamicAcrylicColor;
+  static Color get dynamicBackgroundColor => isMaterial ? dynamicMaterialColor : (Globals.darkModeTheme ? const Color(0xCC000000) : const Color(0xCCFFFFFF));
 
   static Color get dynamicWindowBackgroundColor {
     if (Platform.isMacOS || (Platform.isLinux && Globals.fullTransparent)) {
@@ -145,27 +145,27 @@ class ColorUtils {
     }
 
     if (ColorUtils.isMaterial) {
-      return ColorUtils.dynamicBackgroundColor;
+      return Globals.darkModeTheme ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
     } else {
       if (Globals.darkModeTheme) {
-        return Colors.black.withAlpha(80);
+        return const Color(0xD9000000);
       } else {
-        return Colors.white.withAlpha(10);
+        return const Color(0xD9FFFFFF);
       }
     }
   }
 
   static late Hct dynamicPrimaryMaterialHct;
-  static Color get dynamicPrimaryMaterialColor => Globals.darkModeTheme ? Color(dynamicPrimaryMaterialHct.toInt()) : Color(dynamicPrimaryMaterialHct.toInt());
+  static Color get dynamicPrimaryMaterialColor => Globals.darkModeTheme ? const Color(0xFF141414) : const Color(0xFFF5F5F7);
 
   static Color get dynamicPrimaryForegroundColor => isMaterial ? dynamicPrimaryMaterialColor : dynamicAcrylicColor;
   static late Hct dynamicSecondaryMaterialHct;
-  static Color get dynamicSecondaryMaterialColor => Globals.darkModeTheme ? Color(dynamicSecondaryMaterialHct.toInt()) : Color(dynamicSecondaryMaterialHct.toInt());
+  static Color get dynamicSecondaryMaterialColor => Globals.darkModeTheme ? const Color(0xFF1E1E1E) : const Color(0xFFEBEBF0);
 
   static Color get dynamicSecondaryForegroundColor => isMaterial ? dynamicSecondaryMaterialColor : dynamicAcrylicColor;
   static late Hct dynamicTertiaryMaterialHct;
 
-  static Color get primaryFontColor => isMaterial ? (Globals.darkModeTheme ? Colors.white : Color(dynamicTertiaryMaterialHct.toInt()).withAlpha(160)) : Colors.white;
+  static Color get primaryFontColor => Globals.darkModeTheme ? Colors.white : const Color(0xFF111111);
 
   static Color get secondaryFontColor => primaryFontColor.withAlpha(160);
 

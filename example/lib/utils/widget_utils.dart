@@ -630,23 +630,24 @@ class _WindowButtonsState extends State<WindowButtons> {
     });
   }
 
-  final buttonColors = WindowButtonColors(
-    iconNormal: ColorUtils.primaryFontColor,
-    mouseOver: const Color(0x66FFFFFF),
-    mouseDown: const Color(0xCCFFFFFF),
-    iconMouseOver: Colors.white,
-    iconMouseDown: Colors.white,
-  );
-
-  final closeButtonColors = WindowButtonColors(
-    iconNormal: ColorUtils.primaryFontColor,
-    mouseOver: const Color(0xFFD32F2F),
-    mouseDown: const Color(0xFFB71C1C),
-    iconMouseOver: Colors.white,
-  );
-
   @override
   Widget build(BuildContext context) {
+    final buttonColors = WindowButtonColors(
+      iconNormal: ColorUtils.primaryFontColor,
+      mouseOver: Globals.darkModeTheme ? const Color(0x33FFFFFF) : const Color(0x1A000000),
+      mouseDown: Globals.darkModeTheme ? const Color(0x66FFFFFF) : const Color(0x33000000),
+      iconMouseOver: ColorUtils.primaryFontColor,
+      iconMouseDown: ColorUtils.primaryFontColor,
+    );
+
+    final closeButtonColors = WindowButtonColors(
+      iconNormal: ColorUtils.primaryFontColor,
+      mouseOver: const Color(0xFFD32F2F),
+      mouseDown: const Color(0xFFB71C1C),
+      iconMouseOver: Colors.white,
+      iconMouseDown: Colors.white,
+    );
+
     return Row(
       children: [
         MinimizeWindowButton(colors: buttonColors),

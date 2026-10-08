@@ -215,10 +215,15 @@ class _MainPageState extends State<MainPage> {
                   IgnorePointer(
                     ignoring: currentIndex != i,
                     child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 160),
+                      duration: const Duration(milliseconds: 135),
                       curve: Curves.easeOutCubic,
                       opacity: currentIndex == i ? 1.0 : 0.0,
-                      child: pages[i],
+                      child: AnimatedScale(
+                        duration: const Duration(milliseconds: 135),
+                        curve: Curves.easeOutCubic,
+                        scale: currentIndex == i ? 1.0 : 0.985,
+                        child: pages[i],
+                      ),
                     ),
                   ),
               ],
@@ -603,21 +608,11 @@ class _MainPageState extends State<MainPage> {
                     borderRadius: BorderRadius.circular(Globals.borderRadius - 2),
                     child: Stack(
                       children: [
-                        CachedNetworkImage(
-                          imageUrl: "${Urls.mojangContentURL}$url",
+                        Image.network(
+                          "${Urls.mojangContentURL}$url",
                           width: double.infinity,
                           height: 150,
                           fit: BoxFit.cover,
-                          memCacheWidth: 600,
-                          memCacheHeight: 300,
-                          placeholder: (context, url) => Container(
-                            height: 150,
-                            color: ColorUtils.dynamicPrimaryForegroundColor,
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            height: 150,
-                            color: ColorUtils.dynamicPrimaryForegroundColor,
-                          ),
                         ),
 
                         Positioned.fill(
@@ -1520,6 +1515,7 @@ class _MainPageState extends State<MainPage> {
           ),
           Globals.darkModeTheme,
           (value) {
+            _invalidatePages();
             setState(() => Globals.darkModeTheme = value);
             ColorUtils.reloadColors();
 
@@ -1596,6 +1592,7 @@ class _MainPageState extends State<MainPage> {
                               onTap: () async => {
                                 Globals.accentColor = 0,
                                 (await SharedPreferences.getInstance()).setInt('accentColor', Globals.accentColor),
+                                _invalidatePages(),
                                 setState(() => ColorUtils.dynamicAccentColor = ColorUtils.getColorFromAccent(
                                       Globals.accentColor,
                                     )),
@@ -1648,6 +1645,7 @@ class _MainPageState extends State<MainPage> {
                                     'accentColor',
                                     Globals.accentColor,
                                   ),
+                                  _invalidatePages(),
                                   setState(() => ColorUtils.dynamicAccentColor = ColorUtils.getColorFromAccent(
                                         Globals.accentColor,
                                       )),
@@ -1777,6 +1775,7 @@ class _MainPageState extends State<MainPage> {
                                 "themeSet",
                                 Globals.selectedWindowTheme,
                               );
+                              _invalidatePages();
                               ColorUtils.reloadColors();
 
                               dynamic effect = getWindowEffect();
@@ -1883,7 +1882,11 @@ class _MainPageState extends State<MainPage> {
             inactiveColor: ColorUtils.dynamicSecondaryForegroundColor,
           ),
           Globals.showOnlyReleases,
-          (value) => setState(() => Globals.showOnlyReleases = value),
+          (value) {
+            _vanillaPage = null;
+            _moddedPage = null;
+            setState(() => Globals.showOnlyReleases = value);
+          },
         ),
 
         WidgetUtils.buildSettingSwitchItem(
