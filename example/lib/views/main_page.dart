@@ -105,43 +105,53 @@ class _MainPageState extends State<MainPage> {
       case NavSection.home:
         pageChild = KeyedSubtree(
           key: const ValueKey(NavSection.home),
-          child: SmoothScrollWrapper(
-            controller: _homeScrollController,
-            child: buildHomeWidgetList(),
+          child: RepaintBoundary(
+            child: SmoothScrollWrapper(
+              controller: _homeScrollController,
+              child: buildHomeWidgetList(),
+            ),
           ),
         );
         break;
       case NavSection.vanilla:
         pageChild = KeyedSubtree(
           key: const ValueKey(NavSection.vanilla),
-          child: SmoothScrollWrapper(
-            controller: _vanillaScrollController,
-            child: buildVanillaList(),
+          child: RepaintBoundary(
+            child: SmoothScrollWrapper(
+              controller: _vanillaScrollController,
+              child: buildVanillaList(),
+            ),
           ),
         );
         break;
       case NavSection.modded:
         pageChild = KeyedSubtree(
           key: const ValueKey(NavSection.modded),
-          child: SmoothScrollWrapper(
-            controller: _moddedScrollController,
-            child: buildModdedList(),
+          child: RepaintBoundary(
+            child: SmoothScrollWrapper(
+              controller: _moddedScrollController,
+              child: buildModdedList(),
+            ),
           ),
         );
         break;
       case NavSection.settings:
         pageChild = KeyedSubtree(
           key: const ValueKey(NavSection.settings),
-          child: SmoothScrollWrapper(
-            controller: _settingsScrollController,
-            child: buildSettingsList(),
+          child: RepaintBoundary(
+            child: SmoothScrollWrapper(
+              controller: _settingsScrollController,
+              child: buildSettingsList(),
+            ),
           ),
         );
         break;
       case NavSection.accounts:
         pageChild = KeyedSubtree(
           key: const ValueKey(NavSection.accounts),
-          child: _buildAccountsPage(),
+          child: RepaintBoundary(
+            child: _buildAccountsPage(),
+          ),
         );
         break;
     }
@@ -152,33 +162,29 @@ class _MainPageState extends State<MainPage> {
         buildNavbar(),
         const SizedBox(width: 8),
         Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            reverseDuration: const Duration(milliseconds: 150),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            layoutBuilder: (currentChild, previousChildren) {
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  ...previousChildren,
-                  if (currentChild != null) currentChild,
-                ],
-              );
-            },
-            transitionBuilder: (Widget animChild, Animation<double> animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.92, end: 1.0).animate(animation),
-                  child: ScrollConfiguration(
-                    behavior: const SmoothScrollBehavior(),
-                    child: animChild,
-                  ),
-                ),
-              );
-            },
-            child: pageChild,
+          child: ScrollConfiguration(
+            behavior: const SmoothScrollBehavior(),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 140),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              layoutBuilder: (currentChild, previousChildren) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
+              transitionBuilder: (Widget animChild, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: animChild,
+                );
+              },
+              child: pageChild,
+            ),
           ),
         ),
       ],
