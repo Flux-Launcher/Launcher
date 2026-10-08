@@ -191,6 +191,15 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildContent(BuildContext context) {
+    final currentIndex = _getNavIndex(Globals.navSelected);
+    final pages = [
+      _getHomePage(),
+      _getVanillaPage(),
+      _getModdedPage(),
+      _getSettingsPage(),
+      _getAccountsPage(),
+    ];
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -199,14 +208,24 @@ class _MainPageState extends State<MainPage> {
         Expanded(
           child: ScrollConfiguration(
             behavior: const SmoothScrollBehavior(),
-            child: IndexedStack(
-              index: _getNavIndex(Globals.navSelected),
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                _getHomePage(),
-                _getVanillaPage(),
-                _getModdedPage(),
-                _getSettingsPage(),
-                _getAccountsPage(),
+                for (int i = 0; i < pages.length; i++)
+                  IgnorePointer(
+                    ignoring: currentIndex != i,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      opacity: currentIndex == i ? 1.0 : 0.0,
+                      child: AnimatedScale(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        scale: currentIndex == i ? 1.0 : 0.95,
+                        child: pages[i],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
