@@ -58,9 +58,56 @@ class _MainPageState extends State<MainPage> {
 
   bool _iconsPrecached = false;
 
+  Widget? _homePage;
+  Widget? _vanillaPage;
+  Widget? _moddedPage;
+  Widget? _settingsPage;
+  Widget? _accountsPage;
+
+  Widget _getHomePage() => _homePage ??= RepaintBoundary(
+    child: SmoothScrollWrapper(
+      controller: _homeScrollController,
+      child: buildHomeWidgetList(),
+    ),
+  );
+
+  Widget _getVanillaPage() => _vanillaPage ??= RepaintBoundary(
+    child: SmoothScrollWrapper(
+      controller: _vanillaScrollController,
+      child: buildVanillaList(),
+    ),
+  );
+
+  Widget _getModdedPage() => _moddedPage ??= RepaintBoundary(
+    child: SmoothScrollWrapper(
+      controller: _moddedScrollController,
+      child: buildModdedList(),
+    ),
+  );
+
+  Widget _getSettingsPage() => _settingsPage ??= RepaintBoundary(
+    child: SmoothScrollWrapper(
+      controller: _settingsScrollController,
+      child: buildSettingsList(),
+    ),
+  );
+
+  Widget _getAccountsPage() => _accountsPage ??= RepaintBoundary(
+    child: _buildAccountsPage(),
+  );
+
+  void _invalidatePages() {
+    _homePage = null;
+    _vanillaPage = null;
+    _moddedPage = null;
+    _settingsPage = null;
+    _accountsPage = null;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _invalidatePages();
     if (!_iconsPrecached) {
       _iconsPrecached = true;
       precacheImage(_releaseIcon, context);
@@ -155,33 +202,11 @@ class _MainPageState extends State<MainPage> {
             child: IndexedStack(
               index: _getNavIndex(Globals.navSelected),
               children: [
-                RepaintBoundary(
-                  child: SmoothScrollWrapper(
-                    controller: _homeScrollController,
-                    child: buildHomeWidgetList(),
-                  ),
-                ),
-                RepaintBoundary(
-                  child: SmoothScrollWrapper(
-                    controller: _vanillaScrollController,
-                    child: buildVanillaList(),
-                  ),
-                ),
-                RepaintBoundary(
-                  child: SmoothScrollWrapper(
-                    controller: _moddedScrollController,
-                    child: buildModdedList(),
-                  ),
-                ),
-                RepaintBoundary(
-                  child: SmoothScrollWrapper(
-                    controller: _settingsScrollController,
-                    child: buildSettingsList(),
-                  ),
-                ),
-                RepaintBoundary(
-                  child: _buildAccountsPage(),
-                ),
+                _getHomePage(),
+                _getVanillaPage(),
+                _getModdedPage(),
+                _getSettingsPage(),
+                _getAccountsPage(),
               ],
             ),
           ),
@@ -278,7 +303,8 @@ class _MainPageState extends State<MainPage> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () {
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) {
           if (Globals.navSelected == section) return;
           setState(() {
             Globals.navSelected = section;
@@ -339,7 +365,8 @@ class _MainPageState extends State<MainPage> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () {
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) {
           if (Globals.navSelected == section) return;
           setState(() {
             Globals.navSelected = section;
