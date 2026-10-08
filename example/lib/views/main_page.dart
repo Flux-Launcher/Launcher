@@ -170,22 +170,29 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: ColorUtils.dynamicWindowBackgroundColor,
-      child: Column(
-        children: [
-          drawTitleCustomBar(),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-              child: Stack(
-                children: [
-                  _buildContent(context),
-                ],
+    return Theme(
+      data: ThemeData(
+        brightness: Globals.darkModeTheme ? Brightness.dark : Brightness.light,
+        applyElevationOverlayColor: false,
+        useMaterial3: false,
+      ),
+      child: Material(
+        color: ColorUtils.dynamicWindowBackgroundColor,
+        child: Column(
+          children: [
+            drawTitleCustomBar(),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: Stack(
+                  children: [
+                    _buildContent(context),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -215,13 +222,13 @@ class _MainPageState extends State<MainPage> {
                   IgnorePointer(
                     ignoring: currentIndex != i,
                     child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 135),
+                      duration: const Duration(milliseconds: 180),
                       curve: Curves.easeOutCubic,
                       opacity: currentIndex == i ? 1.0 : 0.0,
                       child: AnimatedScale(
-                        duration: const Duration(milliseconds: 135),
+                        duration: const Duration(milliseconds: 180),
                         curve: Curves.easeOutCubic,
-                        scale: currentIndex == i ? 1.0 : 0.985,
+                        scale: currentIndex == i ? 1.0 : 0.95,
                         child: pages[i],
                       ),
                     ),
@@ -1515,9 +1522,10 @@ class _MainPageState extends State<MainPage> {
           ),
           Globals.darkModeTheme,
           (value) {
-            _invalidatePages();
-            setState(() => Globals.darkModeTheme = value);
+            Globals.darkModeTheme = value;
             ColorUtils.reloadColors();
+            _invalidatePages();
+            setState(() {});
 
             Window.setEffect(
               effect: getWindowEffect(),
@@ -1592,11 +1600,12 @@ class _MainPageState extends State<MainPage> {
                               onTap: () async => {
                                 Globals.accentColor = 0,
                                 (await SharedPreferences.getInstance()).setInt('accentColor', Globals.accentColor),
-                                _invalidatePages(),
-                                setState(() => ColorUtils.dynamicAccentColor = ColorUtils.getColorFromAccent(
-                                      Globals.accentColor,
-                                    )),
+                                ColorUtils.dynamicAccentColor = ColorUtils.getColorFromAccent(
+                                  Globals.accentColor,
+                                ),
                                 ColorUtils.reloadColors(),
+                                _invalidatePages(),
+                                setState(() {}),
                                 Window.setEffect(
                                   effect: getWindowEffect(),
                                   color: ColorUtils.dynamicBackgroundColor,
@@ -1645,11 +1654,12 @@ class _MainPageState extends State<MainPage> {
                                     'accentColor',
                                     Globals.accentColor,
                                   ),
-                                  _invalidatePages(),
-                                  setState(() => ColorUtils.dynamicAccentColor = ColorUtils.getColorFromAccent(
-                                        Globals.accentColor,
-                                      )),
+                                  ColorUtils.dynamicAccentColor = ColorUtils.getColorFromAccent(
+                                    Globals.accentColor,
+                                  ),
                                   ColorUtils.reloadColors(),
+                                  _invalidatePages(),
+                                  setState(() {}),
                                   Window.setEffect(
                                     effect: getWindowEffect(),
                                     color: ColorUtils.dynamicBackgroundColor,
@@ -1775,8 +1785,8 @@ class _MainPageState extends State<MainPage> {
                                 "themeSet",
                                 Globals.selectedWindowTheme,
                               );
-                              _invalidatePages();
                               ColorUtils.reloadColors();
+                              _invalidatePages();
 
                               dynamic effect = getWindowEffect();
                               Window.setEffect(
@@ -1789,7 +1799,7 @@ class _MainPageState extends State<MainPage> {
                                   dark: Globals.darkModeTheme,
                                 );
                               }
-                              setState(() => effect = effect);
+                              setState(() {});
                             },
                             buttonStyleData: ButtonStyleData(
                               padding: const EdgeInsets.symmetric(horizontal: 16),

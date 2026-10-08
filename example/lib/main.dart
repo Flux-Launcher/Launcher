@@ -68,6 +68,11 @@ class MyApp extends StatelessWidget {
           orElse: () => const Locale('en'),
         );
       },
+      theme: ThemeData(
+        brightness: Globals.darkModeTheme ? Brightness.dark : Brightness.light,
+        applyElevationOverlayColor: false,
+        useMaterial3: false,
+      ),
       debugShowCheckedModeBanner: false,
       home: MyAppBody(),
     );
