@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
@@ -92,36 +93,84 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildContent(BuildContext context) {
-    switch (Globals.navSelected) {
-      case NavSection.home:
-        return _buildPage(buildHomeWidgetList());
-      case NavSection.flux:
-        return _buildPage(buildFluxList());
-      case NavSection.vanilla:
-        return _buildPage(buildVanillaList());
-      case NavSection.modded:
-        return _buildPage(buildModdedList());
-      case NavSection.settings:
-        return _buildPage(buildSettingsList());
-      case NavSection.accounts:
-        return _buildAccountsPage();
-    }
-  }
-
-  Widget _buildPage(Widget child) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         buildNavbar(),
         const SizedBox(width: 8),
         Expanded(
-          child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-            child: child,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            reverseDuration: const Duration(milliseconds: 160),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (currentChild, previousChildren) {
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ...previousChildren,
+                  if (currentChild != null) currentChild,
+                ],
+              );
+            },
+            transitionBuilder: (child, animation) {
+              return AnimatedBuilder(
+                animation: animation,
+                builder: (context, child) {
+                  final progress = animation.value;
+                  final scale = 0.85 + 0.15 * progress;
+                  final blur = (1.0 - progress) * 8.0;
+                  final opacity = progress.clamp(0.0, 1.0);
+
+                  Widget res = Opacity(
+                    opacity: opacity,
+                    child: Transform.scale(
+                      scale: scale,
+                      alignment: Alignment.center,
+                      child: child,
+                    ),
+                  );
+
+                  if (blur > 0.08) {
+                    res = ImageFiltered(
+                      imageFilter: ImageFilter.blur(
+                        sigmaX: blur * 1.5,
+                        sigmaY: blur * 0.4,
+                      ),
+                      child: res,
+                    );
+                  }
+
+                  return res;
+                },
+                child: child,
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey(Globals.navSelected),
+              child: SmoothScrollWrapper(
+                child: _getTabContent(Globals.navSelected),
+              ),
+            ),
           ),
         ),
       ],
     );
+  }
+
+  Widget _getTabContent(NavSection section) {
+    switch (section) {
+      case NavSection.home:
+        return buildHomeWidgetList();
+      case NavSection.vanilla:
+        return buildVanillaList();
+      case NavSection.modded:
+        return buildModdedList();
+      case NavSection.settings:
+        return buildSettingsList();
+      case NavSection.accounts:
+        return _buildAccountsContent();
+    }
   }
 
   Widget _buildResponsiveTileGrid(
@@ -193,8 +242,6 @@ class _MainPageState extends State<MainPage> {
             ),
             buildNavItem(Icons.home_rounded, isPl ? "Główna" : "Home", NavSection.home),
             const SizedBox(height: 6),
-            buildNavFluxItem(NavSection.flux),
-            const SizedBox(height: 6),
             buildNavItem(FluxIcons.vanilla, "Vanilla", NavSection.vanilla),
             const SizedBox(height: 6),
             buildNavItem(FluxIcons.modded, isPl ? "Mody" : "Modded", NavSection.modded),
@@ -245,54 +292,6 @@ class _MainPageState extends State<MainPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: WidgetUtils.customTextStyle(
-                    14,
-                    selected ? FontWeight.w600 : FontWeight.w400,
-                    selected
-                        ? ColorUtils.primaryFontColor
-                        : ColorUtils.primaryFontColor.withAlpha(180),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildNavFluxItem(NavSection section) {
-    final bool selected = Globals.navSelected == section;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            Globals.navSelected = section;
-          });
-        },
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Globals.borderRadius / 2),
-            color: selected
-                ? ColorUtils.dynamicAccentColor.withAlpha(45)
-                : Colors.transparent,
-          ),
-          child: Row(
-            children: [
-              Image.asset(
-                "assets/flux.png",
-                width: 22,
-                height: 22,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  "Flux Lite",
                   style: WidgetUtils.customTextStyle(
                     14,
                     selected ? FontWeight.w600 : FontWeight.w400,
@@ -584,280 +583,6 @@ class _MainPageState extends State<MainPage> {
     } catch (_) {
       return "";
     }
-  }
-
-  ListView buildFluxList() {
-    return ListView(
-      children: [
-        _buildFluxHero(),
-        const SizedBox(height: 8),
-        if (Globals.fluxVersionsResponse != null) ...[
-          _buildResponsiveTileGrid(
-            [
-              for (var prodotto in Globals.fluxVersionsResponse)
-                buildFluxItem(
-                  prodotto['name'],
-                  prodotto['gameversion'],
-                  prodotto['id'],
-                  prodotto['img'],
-                ),
-            ],
-            minTileWidth: 340,
-            maxColumns: 2,
-          ),
-        ] else ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            child: Text(
-              AppLocalizations.of(context)!.flux_products_empty,
-              textAlign: TextAlign.center,
-              style: WidgetUtils.customTextStyle(
-                22,
-                FontWeight.w300,
-                ColorUtils.primaryFontColor,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildFluxHero() {
-    return Material(
-      elevation: 15,
-      color: ColorUtils.dynamicPrimaryForegroundColor,
-      shadowColor: ColorUtils.defaultShadowColor,
-      borderRadius: BorderRadius.circular(Globals.borderRadius + 4),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(Icons.auto_awesome, color: ColorUtils.secondaryFontColor, size: 34),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.flux_hero_title,
-                    style: WidgetUtils.customTextStyle(20, FontWeight.w700, ColorUtils.secondaryFontColor),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    AppLocalizations.of(context)!.flux_hero_subtitle,
-                    style: WidgetUtils.customTextStyle(13, FontWeight.w400, ColorUtils.secondaryFontColor),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildFluxTrustChip(Icons.shield_outlined, AppLocalizations.of(context)!.flux_trust_privacy),
-                      _buildFluxTrustChip(Icons.block, AppLocalizations.of(context)!.flux_trust_no_ads),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFluxTrustChip(IconData icon, String label) {
-    final Color fg = ColorUtils.primaryFontColor;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: ColorUtils.dynamicSecondaryForegroundColor,
-        borderRadius: const BorderRadius.all(Radius.circular(20)),
-        border: Border.all(color: fg.withAlpha(50)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: fg),
-          const SizedBox(width: 5),
-          _buildChipLabel(label, FontWeight.w600, color: fg),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFluxFeatureChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(38),
-        borderRadius: const BorderRadius.all(Radius.circular(10)),
-        border: Border.all(color: Colors.white.withAlpha(60)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          _buildChipLabel(label, FontWeight.w500),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChipLabel(String label, FontWeight weight, {Color color = Colors.white}) {
-    return Transform.translate(
-      offset: const Offset(0, 0.75),
-      child: Text(label, style: WidgetUtils.customTextStyle(11, weight, color)),
-    );
-  }
-
-  Widget buildFluxItem(
-    String productName,
-    String gameVersion,
-    String productId,
-    String image,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 2, 0, 2),
-      child: Material(
-        elevation: 15,
-        color: ColorUtils.dynamicPrimaryForegroundColor,
-        shadowColor: ColorUtils.defaultShadowColor,
-        borderRadius: BorderRadius.circular(Globals.borderRadius + 4),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.network(image, fit: BoxFit.cover),
-            ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withAlpha(160)],
-                    stops: const [0.25, 0.85],
-                  ),
-                ),
-              ),
-            ),
-
-            Positioned(
-              top: 12,
-              left: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(38),
-                  borderRadius: const BorderRadius.all(Radius.circular(8)),
-                  boxShadow: [BoxShadow(color: Colors.black.withAlpha(60), blurRadius: 6, offset: const Offset(0, 2))],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-
-                    const Icon(Icons.star, size: 13, color: Colors.white),
-                    const SizedBox(width: 4),
-                    Text(
-                      AppLocalizations.of(context)!.flux_badge_featured,
-                      style: WidgetUtils.customTextStyle(11, FontWeight.w700, Colors.white.withAlpha(230)).copyWith(height: 1),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            Column(
-              children: [
-                const SizedBox(height: 118),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              productName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: WidgetUtils.customTextStyle(18, FontWeight.w500, Colors.white),
-                            ),
-                            Text(
-                              "minecraft $gameVersion",
-                              style: WidgetUtils.customTextStyle(14, FontWeight.w500, Colors.white.withAlpha(200)),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                _buildFluxFeatureChip(Icons.auto_awesome, AppLocalizations.of(context)!.flux_feature_optifine),
-                                _buildFluxFeatureChip(Icons.bolt, AppLocalizations.of(context)!.flux_feature_pvp),
-                                _buildFluxFeatureChip(Icons.music_note, AppLocalizations.of(context)!.flux_feature_music),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final config = LaunchConfig(
-                              gameVersion: gameVersion,
-                              productId: productId,
-                              isModded: false,
-                              realGameVersion: gameVersion,
-                              loader: ModLoader.vanilla,
-                              startOnFirstThread: false,
-                              jvmArgs: [],
-                              launcherArgs: [],
-                            );
-
-                            await LaunchUtils.launchMinecraft(
-                              context,
-                              config,
-                              onAccountRequired: () {
-                                setState(() => Globals.navSelected = NavSection.accounts);
-                              },
-                            );
-                          },
-                          icon: const Icon(Icons.rocket_launch, size: 20, color: Colors.white),
-                          iconAlignment: IconAlignment.end,
-                          label: Text(
-                            AppLocalizations.of(context)!.flux_play_button,
-                            style: WidgetUtils.customTextStyle(15, FontWeight.w700, Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: ColorUtils.dynamicAccentColor,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(Globals.borderRadius - 4),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   ListView buildVanillaList() {
@@ -2490,84 +2215,6 @@ class _MainPageState extends State<MainPage> {
 
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
-          child: TextDivider(
-            color: ColorUtils.secondaryFontColor.withAlpha(80),
-            thickness: 2,
-            text: Text(
-              "For devs",
-              textAlign: TextAlign.center,
-              style: WidgetUtils.customTextStyle(
-                20,
-                FontWeight.w300,
-                ColorUtils.primaryFontColor,
-              ),
-            ),
-          ),
-        ),
-
-        WidgetUtils.buildSettingContainerItem(
-          InkWell(
-            borderRadius: BorderRadius.circular(Globals.borderRadius / 2),
-            onTap: () => _showDevInfoDialog(context),
-            child: Row(
-              children: [
-                SizedBox(
-                  height: 55,
-                  width: 45,
-                  child: Center(
-                    child: Material(
-                      elevation: 10,
-                      color: Colors.transparent,
-                      shadowColor: ColorUtils.defaultShadowColor,
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                      child: Icon(
-                        Icons.developer_mode_rounded,
-                        color: ColorUtils.primaryFontColor,
-                        size: 26,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Developer Info & Window Metrics",
-                          style: WidgetUtils.customTextStyle(
-                            16,
-                            FontWeight.w500,
-                            ColorUtils.primaryFontColor,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Live window size, display scale, client diagnostics & runtime metrics",
-                          style: WidgetUtils.customTextStyle(
-                            12,
-                            FontWeight.w400,
-                            ColorUtils.secondaryFontColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                WidgetUtils.buildTextButton(
-                  ColorUtils.dynamicAccentColor,
-                  Colors.white,
-                  () => _showDevInfoDialog(context),
-                  "Show",
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15),
             child: Divider(
@@ -2612,16 +2259,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  void _showDevInfoDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withAlpha(140),
-      builder: (BuildContext dialogContext) {
-        return const _DevInfoDialog();
-      },
-    );
-  }
-
   Widget linkIcon(IconData icon, String url) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5),
@@ -2636,20 +2273,14 @@ class _MainPageState extends State<MainPage> {
     return match != null ? match.group(0)! : 'N/A';
   }
 
-  Widget _buildAccountsPage() {
+  Widget _buildAccountsContent() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        buildNavbar(),
-      const SizedBox(width: 8),
-
-      Expanded(
-        child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        Expanded(
           child: buildAccountList(),
         ),
-      ),
-      const SizedBox(width: 10),
+        const SizedBox(width: 10),
       Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -3282,441 +2913,55 @@ class AccountUtils {
   }
 }
 
-class _DevInfoDialog extends StatefulWidget {
-  const _DevInfoDialog();
+class SmoothScrollWrapper extends StatefulWidget {
+  final Widget child;
+  const SmoothScrollWrapper({super.key, required this.child});
 
   @override
-  State<_DevInfoDialog> createState() => _DevInfoDialogState();
+  State<SmoothScrollWrapper> createState() => _SmoothScrollWrapperState();
 }
 
-class _DevInfoDialogState extends State<_DevInfoDialog> {
-  bool _copied = false;
+class _SmoothScrollWrapperState extends State<SmoothScrollWrapper> {
+  final ScrollController _scrollController = ScrollController();
+  double _scrollTarget = 0.0;
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    bool isPrimary = false,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-        decoration: BoxDecoration(
-          color: isPrimary
-              ? ColorUtils.dynamicAccentColor.withAlpha(35)
-              : const Color(0xFF222228),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isPrimary
-                ? ColorUtils.dynamicAccentColor.withAlpha(160)
-                : Colors.white.withAlpha(20),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-                color: isPrimary
-                    ? ColorUtils.dynamicAccentColor
-                    : Colors.white.withAlpha(150),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'JetBrainsMono',
-                color: Colors.white,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.white.withAlpha(130),
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  Widget _buildSectionHeader(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: ColorUtils.dynamicAccentColor),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: const Color(0xFF202026),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.white.withAlpha(12),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 170,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withAlpha(160),
-              ),
-            ),
-          ),
-          Expanded(
-            child: SelectableText(
-              value,
-              style: const TextStyle(
-                fontSize: 12,
-                fontFamily: 'JetBrainsMono',
-                fontWeight: FontWeight.w400,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent && _scrollController.hasClients) {
+      GestureBinding.instance.pointerSignalResolver.register(event, (PointerSignalEvent e) {
+        final pos = _scrollController.position;
+        if (!pos.hasContentDimensions) return;
+        final delta = (e as PointerScrollEvent).scrollDelta.dy;
+        if (_scrollTarget < pos.minScrollExtent || _scrollTarget > pos.maxScrollExtent) {
+          _scrollTarget = _scrollController.offset;
+        }
+        _scrollTarget = (_scrollTarget + delta * 1.6).clamp(pos.minScrollExtent, pos.maxScrollExtent);
+        _scrollController.animateTo(
+          _scrollTarget,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+        );
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final mediaSize = media.size;
-    final dpr = media.devicePixelRatio;
-
-    int winWidth = mediaSize.width.toInt();
-    int winHeight = mediaSize.height.toInt();
-    int winX = 0;
-    int winY = 0;
-    bool isMaximized = false;
-
-    try {
-      winWidth = appWindow.size.width.toInt();
-      winHeight = appWindow.size.height.toInt();
-      winX = appWindow.position.dx.toInt();
-      winY = appWindow.position.dy.toInt();
-      isMaximized = appWindow.isMaximized;
-    } catch (_) {}
-
-    final dialogWidth = (mediaSize.width * 0.85).clamp(560.0, 780.0);
-    final dialogHeight = (mediaSize.height * 0.85).clamp(460.0, 640.0);
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
-      child: Center(
-        child: Container(
-          width: dialogWidth,
-          height: dialogHeight,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: const Color(0xFF17171C),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: ColorUtils.dynamicAccentColor.withAlpha(120),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(180),
-                blurRadius: 36,
-                offset: const Offset(0, 12),
-              ),
-            ],
+    return Listener(
+      onPointerSignal: _handlePointerSignal,
+      child: PrimaryScrollController(
+        controller: _scrollController,
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            scrollbars: false,
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: ColorUtils.dynamicAccentColor.withAlpha(40),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.developer_mode_rounded,
-                      color: ColorUtils.dynamicAccentColor,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              "Developer Information",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withAlpha(45),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.green.withAlpha(160),
-                                  width: 1,
-                                ),
-                              ),
-                              child: const Text(
-                                "LIVE",
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.8,
-                                  color: Colors.greenAccent,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          "Live window metrics, scale, client & environment states",
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white.withAlpha(140),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    splashRadius: 18,
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: Colors.white.withAlpha(180),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildMetricCard(
-                    title: "WINDOW SIZE",
-                    value: "${mediaSize.width.toStringAsFixed(0)} × ${mediaSize.height.toStringAsFixed(0)}",
-                    subtitle: "Logical resolution",
-                    isPrimary: true,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMetricCard(
-                    title: "OS WINDOW",
-                    value: "$winWidth × $winHeight",
-                    subtitle: "Pos: ($winX, $winY)",
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMetricCard(
-                    title: "SCALE / DPR",
-                    value: "${dpr.toStringAsFixed(2)}x",
-                    subtitle: "${(mediaSize.width * dpr).toInt()} × ${(mediaSize.height * dpr).toInt()} px",
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMetricCard(
-                    title: "ASPECT RATIO",
-                    value: "${(mediaSize.width / (mediaSize.height > 0 ? mediaSize.height : 1)).toStringAsFixed(2)}:1",
-                    subtitle: isMaximized ? "Maximized" : "Windowed",
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                  child: ListView(
-                    children: [
-                      _buildSectionHeader(Icons.aspect_ratio_rounded, "Window & Display Metrics"),
-                      _buildInfoRow("Logical Dimensions", "${mediaSize.width.toStringAsFixed(1)} × ${mediaSize.height.toStringAsFixed(1)}"),
-                      _buildInfoRow("Physical Pixels", "${(mediaSize.width * dpr).toInt()} × ${(mediaSize.height * dpr).toInt()} px"),
-                      _buildInfoRow("Device Pixel Ratio", dpr.toStringAsFixed(3)),
-                      _buildInfoRow("Aspect Ratio", "${(mediaSize.width / (mediaSize.height > 0 ? mediaSize.height : 1)).toStringAsFixed(4)}:1"),
-                      _buildInfoRow("OS Window Rect", "X: $winX, Y: $winY  |  W: $winWidth, H: $winHeight"),
-                      _buildInfoRow("Window State", isMaximized ? "Maximized" : "Normal Windowed"),
-                      _buildInfoRow("Config Defaults", "Launch: 1180 × 720  |  Min: 960 × 600"),
-                      _buildInfoRow("Sidebar Width", "175 px"),
-                      _buildInfoRow("Content Viewport", "${(mediaSize.width - 175 - 8).clamp(0, 9999).toStringAsFixed(1)} × ${mediaSize.height.toStringAsFixed(1)} px"),
-
-                      _buildSectionHeader(Icons.dashboard_customize_rounded, "Client & UI State"),
-                      _buildInfoRow("Client Version", "Flux Launcher v0.1 Beta"),
-                      _buildInfoRow("Build Number", Globals.buildVersion),
-                      _buildInfoRow("Active Tab", Globals.navSelected.name),
-                      _buildInfoRow("Dark Mode", Globals.darkModeTheme ? "True" : "False"),
-                      _buildInfoRow("Theme Name / ID", "${Globals.selectedWindowTheme.isNotEmpty ? Globals.selectedWindowTheme : 'Default'} (${Globals.WindowThemes.length} available)"),
-                      _buildInfoRow("Accent Color Hex", "#${ColorUtils.dynamicAccentColor.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}"),
-                      _buildInfoRow("Language", "${Localizations.localeOf(context).languageCode} (${Platform.localeName})"),
-
-                      _buildSectionHeader(Icons.folder_special_rounded, "Minecraft & Environment"),
-                      _buildInfoRow("Game Directory", Globals.gamefoldercontroller.text.isNotEmpty ? Globals.gamefoldercontroller.text : "Default (.minecraft)"),
-                      _buildInfoRow("Java Executable", Globals.javapathcontroller.text.isNotEmpty ? Globals.javapathcontroller.text : "Auto-detected"),
-                      _buildInfoRow("Assigned RAM", Globals.javaramcontroller.text.isNotEmpty ? "${Globals.javaramcontroller.text} MB" : "Default"),
-                      _buildInfoRow("Java Adv Settings", Globals.javaAdvSet ? "True" : "False"),
-                      _buildInfoRow("Force Classpath", Globals.forceClasspath ? "True" : "False"),
-                      _buildInfoRow("JVM VM Flags", Globals.javavmcontroller.text.isNotEmpty ? Globals.javavmcontroller.text : "(none)"),
-                      _buildInfoRow("Launcher Args", Globals.javalaunchercontroller.text.isNotEmpty ? Globals.javalaunchercontroller.text : "(none)"),
-                      _buildInfoRow("Active Account", Globals.usernamecontroller.text.isNotEmpty ? Globals.usernamecontroller.text : "Not logged in"),
-                      _buildInfoRow("Logged Accounts", "${Globals.accounts.length}"),
-                      _buildInfoRow("Pinned Versions", "${Globals.pinnedVersions.length}"),
-
-                      _buildSectionHeader(Icons.memory_rounded, "System & Hardware"),
-                      _buildInfoRow("Operating System", "${Platform.operatingSystem} (${Platform.operatingSystemVersion})"),
-                      _buildInfoRow("Hostname", Platform.localHostname),
-                      _buildInfoRow("CPU Cores", "${Platform.numberOfProcessors}"),
-                      _buildInfoRow("Dart Engine", Platform.version),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  if (_copied)
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 16),
-                        const SizedBox(width: 6),
-                        const Text(
-                          "Copied to clipboard!",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.greenAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  const Spacer(),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: const Color(0xFF24242C),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: Colors.white.withAlpha(25),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    icon: const Icon(Icons.copy_rounded, size: 16),
-                    label: const Text(
-                      "Copy All",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    onPressed: () async {
-                      final report = '''=== FLUX LAUNCHER - DEVELOPER INFO ===
-[WINDOW & DISPLAY]
-- Logical Size: ${mediaSize.width.toStringAsFixed(1)} x ${mediaSize.height.toStringAsFixed(1)}
-- Physical Size: ${(mediaSize.width * dpr).toInt()} x ${(mediaSize.height * dpr).toInt()} px
-- Device Pixel Ratio: ${dpr.toStringAsFixed(3)}x
-- Aspect Ratio: ${(mediaSize.width / (mediaSize.height > 0 ? mediaSize.height : 1)).toStringAsFixed(4)}:1
-- OS Window Size: $winWidth x $winHeight
-- Window Position: ($winX, $winY)
-- Maximized: $isMaximized
-- Default Launch Size: 1180 x 720 (Min: 960 x 600)
-- Sidebar Width: 175 px
-- Content Viewport: ${(mediaSize.width - 175 - 8).clamp(0, 9999).toStringAsFixed(1)} x ${mediaSize.height.toStringAsFixed(1)} px
-
-[CLIENT & UI STATE]
-- Client: Flux Launcher v0.1 Beta (Build: ${Globals.buildVersion})
-- Active Tab: ${Globals.navSelected.name}
-- Dark Mode: ${Globals.darkModeTheme}
-- Theme: ${Globals.selectedWindowTheme.isNotEmpty ? Globals.selectedWindowTheme : 'Default'}
-- Accent Color: #${ColorUtils.dynamicAccentColor.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}
-- Language: ${Localizations.localeOf(context).languageCode} (${Platform.localeName})
-
-[MINECRAFT ENVIRONMENT]
-- Game Directory: ${Globals.gamefoldercontroller.text.isNotEmpty ? Globals.gamefoldercontroller.text : 'Default (.minecraft)'}
-- Java Path: ${Globals.javapathcontroller.text.isNotEmpty ? Globals.javapathcontroller.text : 'Auto-detected'}
-- Java RAM: ${Globals.javaramcontroller.text.isNotEmpty ? Globals.javaramcontroller.text + ' MB' : 'Default'}
-- Java Adv Settings: ${Globals.javaAdvSet}
-- Force Classpath: ${Globals.forceClasspath}
-- JVM Flags: ${Globals.javavmcontroller.text.isNotEmpty ? Globals.javavmcontroller.text : '(none)'}
-- Launcher Args: ${Globals.javalaunchercontroller.text.isNotEmpty ? Globals.javalaunchercontroller.text : '(none)'}
-- Active Account: ${Globals.usernamecontroller.text.isNotEmpty ? Globals.usernamecontroller.text : 'None'}
-- Accounts Count: ${Globals.accounts.length}
-- Pinned Versions: ${Globals.pinnedVersions.length}
-
-[SYSTEM & HARDWARE]
-- OS: ${Platform.operatingSystem} (${Platform.operatingSystemVersion})
-- Hostname: ${Platform.localHostname}
-- CPU Cores: ${Platform.numberOfProcessors}
-- Dart SDK: ${Platform.version}
-======================================''';
-                      await Clipboard.setData(ClipboardData(text: report));
-                      setState(() => _copied = true);
-                      Future.delayed(const Duration(seconds: 3), () {
-                        if (mounted) setState(() => _copied = false);
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: ColorUtils.dynamicAccentColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      "Close",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          child: widget.child,
         ),
       ),
     );

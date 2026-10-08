@@ -22,11 +22,11 @@ class Globals {
   static const javaLauncherMainClass = "team.flux.launcher.Main";
 
   static var showOnlyReleases = false;
-  static var darkModeTheme = false;
+  static var darkModeTheme = true;
   static var showConsole = false;
   static var javaAdvSet = false;
   static var customFolderSet = false;
-  static var selectedWindowTheme = '';
+  static var selectedWindowTheme = 'Acrylic';
   static var accentColor = 0;
   static var fullTransparent = false;
   static var forceClasspath = false;
@@ -59,8 +59,6 @@ class Globals {
   static var vanillaVersionsResponse;
   static var vanillaNewsResponse;
 
-  static var fluxVersionsResponse;
-
   static late Map<String, dynamic> incompatibleJson;
 
   static bool get isNewsAvailable => Globals.vanillaNewsResponse != null;
@@ -78,7 +76,6 @@ class Globals {
 
 enum NavSection {
   home,
-  flux,
   vanilla,
   modded,
   settings,
@@ -94,7 +91,6 @@ class Urls {
   static const fabricApiURL = "https://meta.fabricmc.net/";
   static const forgeVersionsURL = "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json";
   static const optifineVersionsURL = "$fluxBaseURL/downloads/optifine.json";
-  static const fluxProductsURL = "$fluxBaseURL/downloads/flux-lite/index.json";
   static const modrinthApiURL = "https://api.modrinth.com/v2";
 
   static const mojangContentURL = "https://launchercontent.mojang.com";

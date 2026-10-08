@@ -42,7 +42,7 @@ Future<void> main() async {
     doWhenWindowReady(() {
       appWindow
         ..minSize = const Size(960, 600)
-        ..size = const Size(1180, 720)
+        ..size = const Size(960, 600)
         ..alignment = Alignment.center
         ..title = Globals.windowTitle
         ..show();
@@ -93,7 +93,7 @@ class MyAppBodyState extends State<MyAppBody> {
     final prefs = await SharedPreferences.getInstance();
 
     Globals.showOnlyReleases = prefs.getBool('showOnlyReleases') ?? true;
-    Globals.darkModeTheme = prefs.getBool('darkModeTheme') ?? false;
+    Globals.darkModeTheme = prefs.getBool('darkModeTheme') ?? true;
     Globals.accentColor = prefs.getInt('accentColor') ?? 0;
     Globals.javaramcontroller.text = prefs.getString('javaRAM') ?? "1024";
     Globals.javapathcontroller.text = prefs.getString('javaPath') ?? "java";
@@ -102,7 +102,7 @@ class MyAppBodyState extends State<MyAppBody> {
     Globals.javalaunchercontroller.text = prefs.getString('javaLauncherArgs') ?? "";
     Globals.customFolderSet = prefs.getBool('customFolderSet') ?? false;
     Globals.gamefoldercontroller.text = prefs.getString('gameFolderPath') ?? LauncherUtils.getApplicationFolder("minecraft");
-    Globals.selectedWindowTheme = prefs.getString('themeSet') ?? getDefaultTheme();
+    Globals.selectedWindowTheme = prefs.getString('themeSet') ?? "Acrylic";
     Globals.showConsole = prefs.getBool('showConsole') ?? true;
     Globals.fullTransparent = prefs.getBool('fullTransparent') ?? false;
     Globals.forceClasspath = prefs.getBool('forceClasspath') ?? false;
@@ -161,13 +161,7 @@ class MyAppBodyState extends State<MyAppBody> {
           print(e);
         }
       })(),
-      (() async {
-        try {
-          await VersionUtils.fetchFluxProducts();
-        } catch (e) {
-          print(e);
-        }
-      })(),
+
       (() async {
         try {
           await VersionUtils.getVersions();
@@ -267,14 +261,7 @@ WindowEffect getWindowEffect() {
 }
 
 String getDefaultTheme() {
-  if (Platform.isWindows) {
-    int? buildNumber = getBuildNumber(Platform.operatingSystemVersion);
-
-    if (buildNumber != null) {
-      if (buildNumber >= 22000) return "Acrylic";
-      if (buildNumber >= 7601) return "Aero";
-    }
-  } else if (Platform.isMacOS) {
+  if (Platform.isWindows || Platform.isMacOS) {
     return "Acrylic";
   }
 
