@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
@@ -154,9 +153,9 @@ class _MainPageState extends State<MainPage> {
         const SizedBox(width: 8),
         Expanded(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            reverseDuration: const Duration(milliseconds: 200),
-            switchInCurve: Curves.easeOutBack,
+            duration: const Duration(milliseconds: 200),
+            reverseDuration: const Duration(milliseconds: 150),
+            switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             layoutBuilder: (currentChild, previousChildren) {
               return Stack(
@@ -168,40 +167,14 @@ class _MainPageState extends State<MainPage> {
               );
             },
             transitionBuilder: (Widget animChild, Animation<double> animation) {
-              final isForward = animation.status == AnimationStatus.forward || animation.status == AnimationStatus.completed;
-
-              final scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: isForward ? Curves.easeOutBack : Curves.easeInCubic,
-                ),
-              );
-
-              final blurAnim = Tween<double>(begin: 6.0, end: 0.0).animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOut,
-                ),
-              );
-
-              return AnimatedBuilder(
-                animation: animation,
-                builder: (context, child) {
-                  final blurVal = blurAnim.value;
-                  return ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: blurVal, sigmaY: blurVal),
-                    child: FadeTransition(
-                      opacity: animation,
-                      child: ScaleTransition(
-                        scale: scaleAnim,
-                        child: child,
-                      ),
-                    ),
-                  );
-                },
-                child: ScrollConfiguration(
-                  behavior: const SmoothScrollBehavior(),
-                  child: animChild,
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.92, end: 1.0).animate(animation),
+                  child: ScrollConfiguration(
+                    behavior: const SmoothScrollBehavior(),
+                    child: animChild,
+                  ),
                 ),
               );
             },
