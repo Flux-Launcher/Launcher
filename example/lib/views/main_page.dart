@@ -215,15 +215,10 @@ class _MainPageState extends State<MainPage> {
                   IgnorePointer(
                     ignoring: currentIndex != i,
                     child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 180),
+                      duration: const Duration(milliseconds: 160),
                       curve: Curves.easeOutCubic,
                       opacity: currentIndex == i ? 1.0 : 0.0,
-                      child: AnimatedScale(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOutCubic,
-                        scale: currentIndex == i ? 1.0 : 0.95,
-                        child: pages[i],
-                      ),
+                      child: pages[i],
                     ),
                   ),
               ],
@@ -608,11 +603,21 @@ class _MainPageState extends State<MainPage> {
                     borderRadius: BorderRadius.circular(Globals.borderRadius - 2),
                     child: Stack(
                       children: [
-                        Image.network(
-                          "${Urls.mojangContentURL}$url",
+                        CachedNetworkImage(
+                          imageUrl: "${Urls.mojangContentURL}$url",
                           width: double.infinity,
                           height: 150,
                           fit: BoxFit.cover,
+                          memCacheWidth: 600,
+                          memCacheHeight: 300,
+                          placeholder: (context, url) => Container(
+                            height: 150,
+                            color: ColorUtils.dynamicPrimaryForegroundColor,
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: 150,
+                            color: ColorUtils.dynamicPrimaryForegroundColor,
+                          ),
                         ),
 
                         Positioned.fill(
