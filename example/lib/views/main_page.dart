@@ -47,6 +47,50 @@ class _MainPageState extends State<MainPage> {
   final ScrollController _moddedScrollController = ScrollController();
   final ScrollController _settingsScrollController = ScrollController();
 
+  static const AssetImage _releaseIcon = AssetImage('assets/release.png');
+  static const AssetImage _alphaIcon = AssetImage('assets/alpha.png');
+  static const AssetImage _betaIcon = AssetImage('assets/beta.png');
+  static const AssetImage _snapshotIcon = AssetImage('assets/snapshot.png');
+  static const AssetImage _forgeIcon = AssetImage('assets/forge.png');
+  static const AssetImage _fabricIcon = AssetImage('assets/fabric.png');
+  static const AssetImage _optifineIcon = AssetImage('assets/optifine.png');
+  static const AssetImage _optiforgeIcon = AssetImage('assets/optiforge.png');
+
+  bool _iconsPrecached = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_iconsPrecached) {
+      _iconsPrecached = true;
+      precacheImage(_releaseIcon, context);
+      precacheImage(_alphaIcon, context);
+      precacheImage(_betaIcon, context);
+      precacheImage(_snapshotIcon, context);
+      precacheImage(_forgeIcon, context);
+      precacheImage(_fabricIcon, context);
+      precacheImage(_optifineIcon, context);
+      precacheImage(_optiforgeIcon, context);
+      precacheImage(const AssetImage('assets/modrinth.png'), context);
+      precacheImage(const AssetImage('assets/flux.png'), context);
+    }
+  }
+
+  int _getNavIndex(NavSection section) {
+    switch (section) {
+      case NavSection.home:
+        return 0;
+      case NavSection.vanilla:
+        return 1;
+      case NavSection.modded:
+        return 2;
+      case NavSection.settings:
+        return 3;
+      case NavSection.accounts:
+        return 4;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -100,62 +144,6 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildContent(BuildContext context) {
-    Widget pageChild;
-    switch (Globals.navSelected) {
-      case NavSection.home:
-        pageChild = KeyedSubtree(
-          key: const ValueKey(NavSection.home),
-          child: RepaintBoundary(
-            child: SmoothScrollWrapper(
-              controller: _homeScrollController,
-              child: buildHomeWidgetList(),
-            ),
-          ),
-        );
-        break;
-      case NavSection.vanilla:
-        pageChild = KeyedSubtree(
-          key: const ValueKey(NavSection.vanilla),
-          child: RepaintBoundary(
-            child: SmoothScrollWrapper(
-              controller: _vanillaScrollController,
-              child: buildVanillaList(),
-            ),
-          ),
-        );
-        break;
-      case NavSection.modded:
-        pageChild = KeyedSubtree(
-          key: const ValueKey(NavSection.modded),
-          child: RepaintBoundary(
-            child: SmoothScrollWrapper(
-              controller: _moddedScrollController,
-              child: buildModdedList(),
-            ),
-          ),
-        );
-        break;
-      case NavSection.settings:
-        pageChild = KeyedSubtree(
-          key: const ValueKey(NavSection.settings),
-          child: RepaintBoundary(
-            child: SmoothScrollWrapper(
-              controller: _settingsScrollController,
-              child: buildSettingsList(),
-            ),
-          ),
-        );
-        break;
-      case NavSection.accounts:
-        pageChild = KeyedSubtree(
-          key: const ValueKey(NavSection.accounts),
-          child: RepaintBoundary(
-            child: _buildAccountsPage(),
-          ),
-        );
-        break;
-    }
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -164,7 +152,38 @@ class _MainPageState extends State<MainPage> {
         Expanded(
           child: ScrollConfiguration(
             behavior: const SmoothScrollBehavior(),
-            child: pageChild,
+            child: IndexedStack(
+              index: _getNavIndex(Globals.navSelected),
+              children: [
+                RepaintBoundary(
+                  child: SmoothScrollWrapper(
+                    controller: _homeScrollController,
+                    child: buildHomeWidgetList(),
+                  ),
+                ),
+                RepaintBoundary(
+                  child: SmoothScrollWrapper(
+                    controller: _vanillaScrollController,
+                    child: buildVanillaList(),
+                  ),
+                ),
+                RepaintBoundary(
+                  child: SmoothScrollWrapper(
+                    controller: _moddedScrollController,
+                    child: buildModdedList(),
+                  ),
+                ),
+                RepaintBoundary(
+                  child: SmoothScrollWrapper(
+                    controller: _settingsScrollController,
+                    child: buildSettingsList(),
+                  ),
+                ),
+                RepaintBoundary(
+                  child: _buildAccountsPage(),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -696,44 +715,39 @@ class _MainPageState extends State<MainPage> {
                     borderRadius: const BorderRadius.all(Radius.circular(5)),
                   ),
                   waitDuration: const Duration(milliseconds: 500),
-                  child: ColorFiltered(
-                    colorFilter: compatible
-                        ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
-                        : const ColorFilter.matrix(<double>[
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
+                  child: compatible
+                      ? Container(
+                          height: 30,
+                          width: 30,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            image: DecorationImage(
+                              filterQuality: FilterQuality.none,
+                              image: _getVersionIconImage(gameType, gameVersion),
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        )
+                      : ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0, 0, 0, 1, 0,
                           ]),
-                    child: Container(
-                      height: 30,
-                      width: 30,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                          filterQuality: FilterQuality.none,
-                          image: AssetImage(_getVersionIcon(gameType, gameVersion)),
-                          fit: BoxFit.contain,
+                          child: Container(
+                            height: 30,
+                            width: 30,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              image: DecorationImage(
+                                filterQuality: FilterQuality.none,
+                                image: _getVersionIconImage(gameType, gameVersion),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                 ),
               ),
 
@@ -823,19 +837,19 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  String _getVersionIcon(String gameType, String gameVersion) {
+  AssetImage _getVersionIconImage(String gameType, String gameVersion) {
     final type = gameType.toLowerCase();
     final version = gameVersion.toLowerCase();
 
-    if (type.contains("alpha")) return 'assets/alpha.png';
-    if (type.contains("beta")) return 'assets/beta.png';
-    if (type.contains("snapshot")) return 'assets/snapshot.png';
-    if (type.contains("optifine") || version.contains("optifine")) return 'assets/optifine.png';
-    if (type.contains("optiforge") || version.contains("optiforge")) return 'assets/optiforge.png';
-    if (type.contains("forge") || version.contains("forge")) return 'assets/forge.png';
-    if (type.contains("fabric") || version.contains("fabric")) return 'assets/fabric.png';
+    if (type.contains("alpha")) return _alphaIcon;
+    if (type.contains("beta")) return _betaIcon;
+    if (type.contains("snapshot")) return _snapshotIcon;
+    if (type.contains("optifine") || version.contains("optifine")) return _optifineIcon;
+    if (type.contains("optiforge") || version.contains("optiforge")) return _optiforgeIcon;
+    if (type.contains("forge") || version.contains("forge")) return _forgeIcon;
+    if (type.contains("fabric") || version.contains("fabric")) return _fabricIcon;
 
-    return 'assets/release.png';
+    return _releaseIcon;
   }
 
   ({String gameVersion, List<String> additionalArgs}) versionResolver(
