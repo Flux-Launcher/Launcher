@@ -164,27 +164,7 @@ class _MainPageState extends State<MainPage> {
         Expanded(
           child: ScrollConfiguration(
             behavior: const SmoothScrollBehavior(),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 140),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              layoutBuilder: (currentChild, previousChildren) {
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
-                );
-              },
-              transitionBuilder: (Widget animChild, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: animChild,
-                );
-              },
-              child: pageChild,
-            ),
+            child: pageChild,
           ),
         ),
       ],
@@ -279,13 +259,20 @@ class _MainPageState extends State<MainPage> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () async {
+        onTap: () {
+          if (Globals.navSelected == section) return;
           setState(() {
             Globals.navSelected = section;
           });
 
           if (section == NavSection.home) {
-            Globals.pinnedVersions = await VersionUtils.getPinnedVersions();
+            VersionUtils.getPinnedVersions().then((val) {
+              if (mounted) {
+                setState(() {
+                  Globals.pinnedVersions = val;
+                });
+              }
+            });
           }
         },
         child: Container(
@@ -334,6 +321,7 @@ class _MainPageState extends State<MainPage> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () {
+          if (Globals.navSelected == section) return;
           setState(() {
             Globals.navSelected = section;
           });
@@ -349,41 +337,56 @@ class _MainPageState extends State<MainPage> {
           ),
           child: Row(
             children: [
-              FutureBuilder<Uint8List>(
-                future: SkinUtils.loadCroppedSkin(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
+              if (SkinUtils.cachedCroppedSkin != null)
+                Container(
+                  height: 30,
+                  width: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      filterQuality: FilterQuality.none,
+                      opacity: selected ? 1.0 : 0.7,
+                      image: MemoryImage(SkinUtils.cachedCroppedSkin!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                )
+              else
+                FutureBuilder<Uint8List>(
+                  future: SkinUtils.loadCroppedSkin(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return Container(
+                        height: 30,
+                        width: 30,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: ColorUtils.primaryFontColor.withAlpha(25),
+                        ),
+                        child: Icon(
+                          Icons.person_rounded,
+                          size: 18,
+                          color: ColorUtils.primaryFontColor.withAlpha(150),
+                        ),
+                      );
+                    }
+
+                    final croppedBytes = snapshot.data!;
                     return Container(
                       height: 30,
                       width: 30,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: ColorUtils.primaryFontColor.withAlpha(25),
-                      ),
-                      child: Icon(
-                        Icons.person_rounded,
-                        size: 18,
-                        color: ColorUtils.primaryFontColor.withAlpha(150),
+                        image: DecorationImage(
+                          filterQuality: FilterQuality.none,
+                          opacity: selected ? 1.0 : 0.7,
+                          image: MemoryImage(croppedBytes),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     );
-                  }
-
-                  final croppedBytes = snapshot.data!;
-                  return Container(
-                    height: 30,
-                    width: 30,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        filterQuality: FilterQuality.none,
-                        opacity: selected ? 1.0 : 0.7,
-                        image: MemoryImage(croppedBytes),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  );
-                },
-              ),
+                  },
+                ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

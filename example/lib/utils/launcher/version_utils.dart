@@ -196,11 +196,23 @@ class VersionUtils {
     return versions;
   }
 
+  static List<Map<String, dynamic>>? _cachedVanillaVersions;
+  static List<Map<String, dynamic>>? _cachedModdedVersions;
+
   static void clearVersionCache() {
     _cachedAllVersions = null;
+    _cachedVanillaVersions = null;
+    _cachedModdedVersions = null;
   }
 
   static List<Map<String, dynamic>> getMinecraftVersions(bool onlyModded) {
+    if (onlyModded && _cachedModdedVersions != null) {
+      return _cachedModdedVersions!;
+    }
+    if (!onlyModded && _cachedVanillaVersions != null) {
+      return _cachedVanillaVersions!;
+    }
+
     List<Map<String, dynamic>> versions = [];
     Set<String> addedVersions = <String>{};
 
@@ -223,6 +235,12 @@ class VersionUtils {
         return b["releaseTime"].compareTo(a["releaseTime"]);
       }
     });
+
+    if (onlyModded) {
+      _cachedModdedVersions = versions;
+    } else {
+      _cachedVanillaVersions = versions;
+    }
 
     return versions;
   }

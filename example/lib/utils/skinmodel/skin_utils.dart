@@ -8,15 +8,39 @@ import 'package:flux_launcher_gui/globals.dart';
 import 'package:flux_launcher_gui/utils/skinmodel/skin_viewer.dart';
 
 class SkinUtils {
+  static Uint8List? _cachedCroppedSkin;
+  static String? _cachedAccountKey;
+
+  static void invalidateCache() {
+    _cachedCroppedSkin = null;
+    _cachedAccountKey = null;
+  }
+
+  static Uint8List? get cachedCroppedSkin => _cachedCroppedSkin;
+
   static Future<Uint8List> loadCroppedSkin() async {
+    final account = Globals.getAccount();
+    final accountKey = '${account?.uuid ?? "default"}_${account?.isSlimSkin ?? false}';
+
+    if (_cachedCroppedSkin != null && _cachedAccountKey == accountKey) {
+      return _cachedCroppedSkin!;
+    }
+
     final rawSkin = await ThreeDimensionalViewer.getImageBytes(
       buildSkinModelImageProvider(),
     );
     final img.Image? original = img.decodeImage(rawSkin);
-    if (original == null) return rawSkin;
+    if (original == null) {
+      _cachedCroppedSkin = rawSkin;
+      _cachedAccountKey = accountKey;
+      return rawSkin;
+    }
     final cropped = img.copyCrop(original, x: 8, y: 8, width: 8, height: 8);
+    final bytes = Uint8List.fromList(img.encodePng(cropped));
 
-    return Uint8List.fromList(img.encodePng(cropped));
+    _cachedCroppedSkin = bytes;
+    _cachedAccountKey = accountKey;
+    return bytes;
   }
 
   static ImageProvider buildSkinModelImageProvider() {
